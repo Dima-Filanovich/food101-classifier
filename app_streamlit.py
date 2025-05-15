@@ -79,10 +79,12 @@ if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Загруженное изображение", use_container_width=True)
 
-    st.write("🔍 Распознавание...")
+        st.write("🔍 Распознавание...")
     img_batch = preprocess_image(image)
-    img_tensor = tf.convert_to_tensor(img_batch)  # Преобразуем в тензор
-    predictions = model(img_tensor).numpy()[0]    # Вызываем TFSMLayer как слой
+    img_tensor = tf.convert_to_tensor(img_batch)
+    output_dict = model(img_tensor)                        # Возвращает dict
+    predictions = list(output_dict.values())[0].numpy()[0] # Получаем тензор и превращаем в numpy
+
 
     # Топ-3 предсказания
     top_indices = predictions.argsort()[-3:][::-1]
