@@ -5,19 +5,19 @@ from PIL import Image
 import requests
 import urllib.parse
 from deep_translator import GoogleTranslator
-
+from keras.layers import TFSMLayer  # ВАЖНО: новый способ загрузки SavedModel
 
 
 # Загрузка модели
 @st.cache_resource
 def load_model():
-    model = tf.keras.models.load_model("food101_modelon")
+    model = TFSMLayer("food101_modelon", call_endpoint="serving_default")
     return model
 
 model = load_model()
 
 # Классы
-CLASS_NAMES = [
+CLASS_NAMES = [  # (Оставил без изменений)
     'apple_pie', 'baby_back_ribs', 'baklava', 'beef_carpaccio', 'beef_tartare',
     'beet_salad', 'beignets', 'bibimbap', 'bread_pudding', 'breakfast_burrito',
     'bruschetta', 'caesar_salad', 'cannoli', 'caprese_salad', 'carrot_cake',
@@ -81,7 +81,7 @@ if uploaded_file is not None:
 
     st.write("🔍 Распознавание...")
     img_batch = preprocess_image(image)
-    predictions = model.predict(img_batch)[0]
+    predictions = model(img_batch)[0].numpy()  # вызов TFSMLayer возвращает тензор
 
     # Топ-3 предсказания
     top_indices = predictions.argsort()[-3:][::-1]
@@ -105,10 +105,11 @@ if uploaded_file is not None:
         st.write(f"**Углеводы:** {nutrition_info['carbohydrates']} г")
 
         # Название на русском
+        product_name_ru = nutrition_info.get("product_name_ru")
         if not product_name_ru:
             try:
                 product_name_ru = GoogleTranslator(source='en', target='ru').translate(predicted_class)
-            except Exception as e:
+            except Exception:
                 product_name_ru = "Перевод недоступен"
         st.write(f"**Название на русском:** {product_name_ru}")
 
