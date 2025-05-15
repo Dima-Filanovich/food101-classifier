@@ -79,7 +79,7 @@ if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Загруженное изображение", use_container_width=True)
 
-        st.write("🔍 Распознавание...")
+    st.write("🔍 Распознавание...")
     img_batch = preprocess_image(image)
     img_tensor = tf.convert_to_tensor(img_batch)
     output_dict = model(img_tensor)                        # Возвращает dict
