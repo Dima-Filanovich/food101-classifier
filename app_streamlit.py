@@ -6,8 +6,7 @@ import requests
 import urllib.parse
 from deep_translator import GoogleTranslator
 
-# Инициализация переводчика
-translator = Translator()
+
 
 # Загрузка модели
 @st.cache_resource
