@@ -11,7 +11,7 @@ from deep_translator import GoogleTranslator
 # Загрузка модели
 @st.cache_resource
 def load_model():
-    model = tf.keras.models.load_model("food101_model.h5")
+    model = tf.keras.models.load_model("food101_modelon")
     return model
 
 model = load_model()
