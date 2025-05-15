@@ -81,7 +81,7 @@ if uploaded_file is not None:
 
     st.write("🔍 Распознавание...")
     img_batch = preprocess_image(image)
-    predictions = model(img_batch)[0].numpy()  # вызов TFSMLayer возвращает тензор
+    predictions = model.predict(img_batch)[0].numpy()  # вызов TFSMLayer возвращает тензор
 
     # Топ-3 предсказания
     top_indices = predictions.argsort()[-3:][::-1]
