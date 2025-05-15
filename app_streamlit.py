@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 import requests
 import urllib.parse
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 
 # Инициализация переводчика
 translator = Translator()
@@ -106,10 +106,11 @@ if uploaded_file is not None:
         st.write(f"**Углеводы:** {nutrition_info['carbohydrates']} г")
 
         # Название на русском
-        product_name_ru = nutrition_info.get("product_name_ru")
         if not product_name_ru:
-            translation = translator.translate(predicted_class, src='en', dest='ru')
-            product_name_ru = translation.text
+            try:
+                product_name_ru = GoogleTranslator(source='en', target='ru').translate(predicted_class)
+            except Exception as e:
+                product_name_ru = "Перевод недоступен"
         st.write(f"**Название на русском:** {product_name_ru}")
 
         # Ссылка на источник
