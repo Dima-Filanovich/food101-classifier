@@ -81,7 +81,8 @@ if uploaded_file is not None:
 
     st.write("🔍 Распознавание...")
     img_batch = preprocess_image(image)
-    predictions = model.predict(img_batch)[0].numpy()  # вызов TFSMLayer возвращает тензор
+    img_tensor = tf.convert_to_tensor(img_batch)  # Преобразуем в тензор
+    predictions = model(img_tensor).numpy()[0]    # Вызываем TFSMLayer как слой
 
     # Топ-3 предсказания
     top_indices = predictions.argsort()[-3:][::-1]
@@ -90,6 +91,7 @@ if uploaded_file is not None:
         class_name = CLASS_NAMES[i].replace('_', ' ').title()
         confidence = predictions[i]
         st.write(f"{class_name}: {confidence:.2%}")
+
 
     # Основное предсказание
     predicted_class = CLASS_NAMES[top_indices[0]].replace('_', ' ').title()
