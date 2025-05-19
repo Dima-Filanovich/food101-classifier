@@ -5,8 +5,17 @@ from PIL import Image
 import requests
 import urllib.parse
 from deep_translator import GoogleTranslator
-from keras.layers import TFSMLayer  # ВАЖНО: новый способ загрузки SavedModel
+from keras.layers import TFSMLayer
+import pandas as pd
+import altair as alt
+import io
 
+# ВРЕМЕННОЕ ОТКЛЮЧЕНИЕ ПРИЛОЖЕНИЯ
+MAINTENANCE_MODE = False
+
+if MAINTENANCE_MODE:
+    st.error("🚧 Приложение находится на обслуживании. Возвращайтесь позже.")
+    st.stop()
 
 # Загрузка модели
 @st.cache_resource
@@ -17,7 +26,7 @@ def load_model():
 model = load_model()
 
 # Классы
-CLASS_NAMES = [  # (Оставил без изменений)
+CLASS_NAMES = [
     'apple_pie', 'baby_back_ribs', 'baklava', 'beef_carpaccio', 'beef_tartare',
     'beet_salad', 'beignets', 'bibimbap', 'bread_pudding', 'breakfast_burrito',
     'bruschetta', 'caesar_salad', 'cannoli', 'caprese_salad', 'carrot_cake',
@@ -48,7 +57,7 @@ def preprocess_image(image: Image.Image) -> np.ndarray:
     img_array = tf.keras.applications.efficientnet.preprocess_input(img_array)
     return np.expand_dims(img_array, axis=0)
 
-# Функция получения пищевой информации
+# Получение пищевой информации
 def get_nutrition_info(food_name):
     query = urllib.parse.quote(food_name.lower())
     url = f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={query}&search_simple=1&action=process&json=1&page_size=1"
@@ -75,6 +84,12 @@ st.write("Загрузите изображение блюда, и модель 
 
 uploaded_file = st.file_uploader("Выберите изображение...", type=["jpg", "jpeg", "png"])
 
+if uploaded_file is None:
+    st.info("Вы можете загрузить изображение. Вот пример:")
+    example_url = "https://upload.wikimedia.org/wikipedia/commons/4/43/Lasagna_-_stonesoup.jpg"
+    example_img = Image.open(requests.get(example_url, stream=True).raw).convert("RGB")
+    st.image(example_img, caption="Пример: Лазанья", use_container_width=True)
+
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Загруженное изображение", use_container_width=True)
@@ -82,24 +97,32 @@ if uploaded_file is not None:
     st.write("🔍 Распознавание...")
     img_batch = preprocess_image(image)
     img_tensor = tf.convert_to_tensor(img_batch)
-    output_dict = model(img_tensor)                        # Возвращает dict
-    predictions = list(output_dict.values())[0].numpy()[0] # Получаем тензор и превращаем в numpy
-
+    output_dict = model(img_tensor)
+    predictions = list(output_dict.values())[0].numpy()[0]
 
     # Топ-3 предсказания
     top_indices = predictions.argsort()[-3:][::-1]
+    top_classes = [CLASS_NAMES[i].replace('_', ' ').title() for i in top_indices]
+    confidences = [predictions[i] for i in top_indices]
+
     st.subheader("🔝 Топ-3 предсказания:")
     for i in top_indices:
-        class_name = CLASS_NAMES[i].replace('_', ' ').title()
-        confidence = predictions[i]
-        st.write(f"{class_name}: {confidence:.2%}")
+        st.write(f"{CLASS_NAMES[i].replace('_', ' ').title()}: {predictions[i]:.2%}")
 
+    # График
+    df = pd.DataFrame({"Блюдо": top_classes, "Уверенность": confidences})
+    chart = alt.Chart(df).mark_bar().encode(
+        x=alt.X("Уверенность:Q", axis=alt.Axis(format=".0%")),
+        y=alt.Y("Блюдо:N", sort='-x'),
+        color=alt.Color("Блюдо:N", legend=None)
+    ).properties(height=150)
+    st.altair_chart(chart, use_container_width=True)
 
     # Основное предсказание
     predicted_class = CLASS_NAMES[top_indices[0]].replace('_', ' ').title()
     st.success(f"🍽️ Это скорее всего: **{predicted_class}** ({predictions[top_indices[0]]:.2%} уверенности)")
 
-    # Получение информации о питательных веществах
+    # Пищевая информация
     nutrition_info = get_nutrition_info(predicted_class)
     if nutrition_info:
         st.subheader("🧪 Пищевая ценность (на 100г):")
@@ -108,7 +131,6 @@ if uploaded_file is not None:
         st.write(f"**Жиры:** {nutrition_info['fat']} г")
         st.write(f"**Углеводы:** {nutrition_info['carbohydrates']} г")
 
-        # Название на русском
         product_name_ru = nutrition_info.get("product_name_ru")
         if not product_name_ru:
             try:
@@ -117,9 +139,30 @@ if uploaded_file is not None:
                 product_name_ru = "Перевод недоступен"
         st.write(f"**Название на русском:** {product_name_ru}")
 
-        # Ссылка на источник
-        product_url = nutrition_info.get("url")
-        if product_url:
-            st.markdown(f"[📎 Подробнее на Open Food Facts]({product_url})")
+        if nutrition_info.get("url"):
+            st.markdown(f"[📎 Подробнее на Open Food Facts]({nutrition_info['url']})")
+
+        # Кнопка для скачивания отчета
+        report = f"""
+Предсказанное блюдо: {predicted_class}
+Уверенность: {predictions[top_indices[0]]:.2%}
+
+Калории: {nutrition_info['energy_kcal']} ккал
+Белки: {nutrition_info['proteins']} г
+Жиры: {nutrition_info['fat']} г
+Углеводы: {nutrition_info['carbohydrates']} г
+Название на русском: {product_name_ru}
+"""
+        st.download_button(
+            label="📥 Скачать отчёт",
+            data=report,
+            file_name="food_prediction_report.txt",
+            mime="text/plain"
+        )
     else:
         st.warning("Информация о пищевой ценности не найдена.")
+
+# Дополнительный режим выбора класса вручную
+if st.checkbox("🔎 Посмотреть категории вручную"):
+    selected_class = st.selectbox("Выберите категорию:", sorted(CLASS_NAMES))
+    st.write(f"Вы выбрали: **{selected_class.replace('_', ' ').title()}**")
