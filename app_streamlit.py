@@ -86,7 +86,7 @@ uploaded_file = st.file_uploader("Выберите изображение...", t
 
 if uploaded_file is None:
     st.info("Вы можете загрузить изображение. Вот пример:")
-    example_url = "https://upload.wikimedia.org/wikipedia/commons/4/43/Lasagna_-_stonesoup.jpg"
+    example_url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsfW388zWeoTBoYVtL5yJi85sJmFoVB3isLw&s"
     example_img = Image.open(requests.get(example_url, stream=True).raw).convert("RGB")
     st.image(example_img, caption="Пример: Лазанья", use_container_width=True)
 
