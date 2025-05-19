@@ -49,9 +49,7 @@ CLASS_NAMES = [
 ]
 
 
-# Показываем все классы заранее
-with st.expander("📋 Показать все категории блюд (модель может распознать)"):
-    st.markdown(", ".join(f"`{c.replace('_', ' ').title()}`" for c in CLASS_NAMES))
+
 
 # Предобработка изображения
 def preprocess_image(image: Image.Image) -> np.ndarray:
@@ -82,8 +80,12 @@ def get_nutrition_info(food_name):
     return None
 
 # Интерфейс
+
 st.title("🍽️ Классификатор еды — Food101")
 st.write("Загрузите изображение блюда, и модель определит его категорию.")
+with st.expander("📖 Посмотреть все категории, которые распознаёт модель"):
+    st.markdown(", ".join(f"`{c.replace('_', ' ').title()}`" for c in CLASS_NAMES))
+
 
 uploaded_file = st.file_uploader("📤 Выберите изображение...", type=["jpg", "jpeg", "png"])
 
@@ -109,11 +111,12 @@ if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Загруженное изображение", use_container_width=True)
 
-    st.write("🔍 Распознавание...")
+    st.write("🔍 Результат распознавания:")
     img_batch = preprocess_image(image)
     img_tensor = tf.convert_to_tensor(img_batch)
-    output_dict = model(img_tensor)
-    predictions = list(output_dict.values())[0].numpy()[0]
+    with st.spinner("🔍 Анализ изображения..."):
+    	output_dict = model(img_tensor)
+    	predictions = list(output_dict.values())[0].numpy()[0]
 
     # Топ-3
     top_indices = predictions.argsort()[-3:][::-1]
@@ -137,9 +140,14 @@ if uploaded_file is not None:
     predicted_class = top_classes[0]
     st.success(f"🍽️ Это скорее всего: **{predicted_class}** ({confidences[0]:.2%} уверенности)")
 
+    # КЭШИРОВАННАЯ загрузка пищевой ценности
+    @st.cache_data(show_spinner=False)
+    def get_nutrition_info_cached(food_name):
+        return get_nutrition_info(food_name)
+
     # Пищевая информация с ожиданием
     with st.spinner("⏳ Получение информации о пищевой ценности..."):
-        nutrition_info = get_nutrition_info(predicted_class)
+        nutrition_info = get_nutrition_info_cached(predicted_class)
 
     if nutrition_info:
         st.subheader("🧪 Пищевая ценность (на 100г):")
