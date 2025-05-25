@@ -2,22 +2,24 @@ import streamlit as st
 
 def show_login():
     st.header("Вход")
-    username = st.text_input("Имя пользователя", key="login_username")
-    password = st.text_input("Пароль", type="password", key="login_password")
-    login_clicked = st.button("Войти", key="login_button")
-    return username, password, login_clicked
+    with st.form("login_form"):
+        username = st.text_input("Имя пользователя")
+        password = st.text_input("Пароль", type="password")
+        submitted = st.form_submit_button("Войти")
+    return username, password, submitted
 
 def show_register():
     st.header("Регистрация")
-    username = st.text_input("Имя пользователя", key="reg_username")
-    password = st.text_input("Пароль", type="password", key="reg_password")
-    confirm_password = st.text_input("Подтвердите пароль", type="password", key="reg_confirm")
-    register_clicked = st.button("Зарегистрироваться", key="register_button")
-    return username, password, confirm_password, register_clicked
+    with st.form("register_form"):
+        username = st.text_input("Имя пользователя")
+        password = st.text_input("Пароль", type="password")
+        confirm_password = st.text_input("Подтвердите пароль", type="password")
+        submitted = st.form_submit_button("Зарегистрироваться")
+    return username, password, confirm_password, submitted
 
 def show_logout(username):
     st.write(f"Вы вошли как **{username}**")
-    if st.button("Выйти", key="logout_button"):
+    if st.button("Выйти"):
         return True
     return False
 

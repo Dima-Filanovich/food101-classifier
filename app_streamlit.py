@@ -30,30 +30,30 @@ def main():
         with tab_login:
             username, password, login_clicked = show_login()
             if login_clicked:
-                with st.spinner("Входим..."):
+                with st.spinner("⏳ Выполняется вход... Пожалуйста, подождите."):
                     try:
                         success, msg, user = auth_ctrl.login(username, password)
                         if success:
                             st.session_state.user = user
-                            show_success("Успешный вход!")
+                            show_success("✅ Успешный вход!")
                             st.experimental_rerun()
                         else:
                             show_error(msg)
                     except Exception as e:
-                        show_error(f"Ошибка при входе: {e}")
+                        show_error(f"❌ Ошибка при входе: {e}")
 
         with tab_register:
             username, password, confirm_password, register_clicked = show_register()
             if register_clicked:
-                with st.spinner("Регистрируем пользователя..."):
+                with st.spinner("🌀 Регистрируем пользователя... Пожалуйста, подождите."):
                     try:
                         success, msg = auth_ctrl.register(username, password, confirm_password)
                         if success:
-                            show_success("Регистрация прошла успешно! Войдите в систему.")
+                            show_success("✅ Регистрация прошла успешно! Теперь войдите.")
                         else:
                             show_error(msg)
                     except Exception as e:
-                        show_error(f"Ошибка при регистрации: {e}")
+                        show_error(f"❌ Ошибка при регистрации: {e}")
     else:
         user = st.session_state.user
         if show_logout(user["username"]):  # ✅ user — dict, не объект
