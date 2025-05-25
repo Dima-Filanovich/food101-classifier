@@ -6,15 +6,33 @@ class AuthController:
         pass
 
     @staticmethod
-    def hash_password(password):
+    def hash_password(password: str) -> str:
         return hashlib.sha256(password.encode()).hexdigest()
 
-    def register_user(self, username, password):
-        password_hash = self.hash_password(password)
-        return create_user(username, password_hash)
+    def register(self, username: str, password: str, confirm_password: str):
+        if not username or not password or not confirm_password:
+            return False, "Пожалуйста, заполните все поля"
 
-    def login_user(self, username, password):
+        if password != confirm_password:
+            return False, "Пароли не совпадают"
+
+        if get_user(username):
+            return False, "Пользователь с таким именем уже существует"
+
+        password_hash = self.hash_password(password)
+        success = create_user(username, password_hash)
+        if success:
+            return True, "Пользователь успешно зарегистрирован"
+        else:
+            return False, "Ошибка при регистрации пользователя"
+
+    def login(self, username: str, password: str):
+        if not username or not password:
+            return False, "Пожалуйста, заполните все поля", None
+
         user = get_user(username)
         if user and user[2] == self.hash_password(password):
-            return {"id": user[0], "username": user[1]}
-        return None
+            user_data = {"id": user[0], "username": user[1]}
+            return True, "", user_data
+        else:
+            return False, "Неверное имя пользователя или пароль", None
