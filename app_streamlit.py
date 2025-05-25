@@ -44,6 +44,7 @@ def main():
                             st.session_state.user = user
                             show_success("✅ Успешный вход!")
                             st.rerun()
+                            st.stop()  # 🔒 Остановить выполнение
                         else:
                             show_error(msg)
                     except Exception as e:
@@ -58,6 +59,7 @@ def main():
                         if success:
                             st.session_state.register_success = True
                             st.rerun()  # Перезапускаем, чтобы показать сообщение
+                            st.stop()  # 🔒 Остановить выполнение
                         else:
                             show_error(msg)
                     except Exception as e:

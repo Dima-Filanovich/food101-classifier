@@ -3,10 +3,11 @@ import tensorflow as tf
 from PIL import Image
 from keras.layers import TFSMLayer
 from models.history_model import add_history
+import functools
 
 class PredictController:
     def __init__(self):
-        self.model = TFSMLayer("food101_modelon", call_endpoint="serving_default")
+        self.model = self._load_model()
         self.CLASS_NAMES = [
             'apple_pie', 'baby_back_ribs', 'baklava', 'beef_carpaccio', 'beef_tartare',
             'beet_salad', 'beignets', 'bibimbap', 'bread_pudding', 'breakfast_burrito',
@@ -31,11 +32,19 @@ class PredictController:
             'waffles'
         ]
 
+    @functools.lru_cache(maxsize=1)
+    def _load_model(self):
+        return TFSMLayer("food101_modelon", call_endpoint="serving_default")
+
     def preprocess_image(self, image: Image.Image) -> np.ndarray:
         image = image.resize((224, 224))
         img_array = tf.keras.preprocessing.image.img_to_array(image)
         img_array = tf.keras.applications.efficientnet.preprocess_input(img_array)
         return np.expand_dims(img_array, axis=0)
+
+    def load_image(self, uploaded_file):
+        """Загружает изображение из файла"""
+        return Image.open(uploaded_file).convert("RGB")
 
     def predict(self, image: Image.Image, user_id: int = None, image_name: str = ""):
         img_tensor = tf.convert_to_tensor(self.preprocess_image(image))
@@ -50,4 +59,27 @@ class PredictController:
             add_history(user_id, image_name, top_classes[0], confidences[0])
 
         return top_classes, confidences
+
+    def predict_verbose(self, image: Image.Image, user_id: int = None, image_name: str = ""):
+        """Упрощённый метод для UI: возвращает результат + описание + флаг уверенности"""
+        top_classes, confidences = self.predict(image, user_id, image_name)
+        predicted_class = top_classes[0]
+        confidence = confidences[0]
+
+        if confidence < 0.5:
+            summary = f"⚠️ Модель не уверена (уверенность: {confidence:.2%}). Возможное блюдо: **{predicted_class}**"
+            is_confident = False
+        else:
+            summary = f"🍽️ Это скорее всего: **{predicted_class}** ({confidence:.2%} уверенности)"
+            is_confident = True
+
+        return {
+            "top_classes": top_classes,
+            "confidences": confidences,
+            "predicted_class": predicted_class,
+            "confidence": confidence,
+            "summary": summary,
+            "is_confident": is_confident
+        }
+
 
