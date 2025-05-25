@@ -4,6 +4,7 @@ from deep_translator import GoogleTranslator
 import streamlit as st
 
 class NutritionController:
+    @staticmethod
     @st.cache_data(show_spinner=False)
     def get_nutrition_info(self, food_name: str):
         query = urllib.parse.quote(food_name.lower())
