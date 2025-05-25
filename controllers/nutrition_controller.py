@@ -31,3 +31,13 @@ class NutritionController:
             return GoogleTranslator(source='en', target='ru').translate(text)
         except Exception:
             return "Перевод недоступен"
+
+    def translate_if_needed(self, nutrition_info: dict, fallback_name: str) -> str:
+        """Если 'product_name_ru' отсутствует, перевести 'product_name' или fallback."""
+        if not nutrition_info:
+            return "Нет данных"
+        ru_name = nutrition_info.get("product_name_ru")
+        if ru_name:
+            return ru_name
+        en_name = nutrition_info.get("product_name") or fallback_name
+        return self.translate_to_russian(en_name)
