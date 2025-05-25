@@ -22,23 +22,26 @@ class AuthController:
         except Exception as e:
             return False, f"Ошибка при проверке пользователя: {e}"
 
-    password_hash = self.hash_password(password)
-    try:
-        success = create_user(username, password_hash)
-        if success:
-            return True, "Пользователь успешно зарегистрирован"
-        else:
-            return False, "Ошибка при регистрации пользователя"
-    except Exception as e:
-        return False, f"Ошибка базы данных при регистрации: {e}"
+        try:
+            password_hash = self.hash_password(password)
+            success = create_user(username, password_hash)
+            if success:
+                return True, "Пользователь успешно зарегистрирован"
+            else:
+                return False, "Ошибка при регистрации пользователя"
+        except Exception as e:
+            return False, f"Ошибка базы данных при регистрации: {e}"
 
     def login(self, username: str, password: str):
         if not username or not password:
             return False, "Пожалуйста, заполните все поля", None
 
-        user = get_user(username)
-        if user and user[2] == self.hash_password(password):
-            user_data = {"id": user[0], "username": user[1]}
-            return True, "", user_data
-        else:
-            return False, "Неверное имя пользователя или пароль", None
+        try:
+            user = get_user(username)
+            if user and user[2] == self.hash_password(password):
+                user_data = {"id": user[0], "username": user[1]}
+                return True, "", user_data
+            else:
+                return False, "Неверное имя пользователя или пароль", None
+        except Exception as e:
+            return False, f"Ошибка при входе: {e}", None
