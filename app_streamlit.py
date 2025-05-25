@@ -1,5 +1,5 @@
 ﻿import streamlit as st
-from models.database import init_db  # <-- импорт
+from models.database import init_db
 
 from controllers.auth_controller import AuthController
 from controllers.predict_controller import PredictController
@@ -12,6 +12,7 @@ from views.prediction_view import (
 )
 
 def main():
+    # ✅ Инициализация базы
     init_db()
     st.set_page_config(page_title="Food101 Classifier", page_icon="🍽️")
 
@@ -19,38 +20,43 @@ def main():
     predict_ctrl = PredictController()
     nutrition_ctrl = NutritionController()
 
-    # Сессия для хранения состояния
     if "user" not in st.session_state:
         st.session_state.user = None
 
-    # Если пользователь не залогинен — показать форму входа/регистрации
     if st.session_state.user is None:
         st.title("Добро пожаловать в Food101 Classifier")
-        tab = st.tabs(["Вход", "Регистрация"])
-        
-        with tab[0]:
+        tab_login, tab_register = st.tabs(["Вход", "Регистрация"])
+
+        with tab_login:
             username, password, login_clicked = show_login()
             if login_clicked:
-                success, msg, user = auth_ctrl.login(username, password)
-                if success:
-                    st.session_state.user = user
-                    show_success("Успешный вход!")
-                    st.experimental_rerun()
-                else:
-                    show_error(msg)
-        
-        with tab[1]:
+                with st.spinner("Входим..."):
+                    try:
+                        success, msg, user = auth_ctrl.login(username, password)
+                        if success:
+                            st.session_state.user = user
+                            show_success("Успешный вход!")
+                            st.experimental_rerun()
+                        else:
+                            show_error(msg)
+                    except Exception as e:
+                        show_error(f"Ошибка при входе: {e}")
+
+        with tab_register:
             username, password, confirm_password, register_clicked = show_register()
             if register_clicked:
-                success, msg = auth_ctrl.register(username, password, confirm_password)
-                if success:
-                    show_success("Регистрация прошла успешно! Войдите в систему.")
-                else:
-                    show_error(msg)
+                with st.spinner("Регистрируем пользователя..."):
+                    try:
+                        success, msg = auth_ctrl.register(username, password, confirm_password)
+                        if success:
+                            show_success("Регистрация прошла успешно! Войдите в систему.")
+                        else:
+                            show_error(msg)
+                    except Exception as e:
+                        show_error(f"Ошибка при регистрации: {e}")
     else:
-        # Пользователь залогинен, показать интерфейс классификатора
         user = st.session_state.user
-        if show_logout(user.username):
+        if show_logout(user["username"]):  # ✅ user — dict, не объект
             st.session_state.user = None
             st.experimental_rerun()
 
@@ -65,10 +71,7 @@ def main():
 
             show_prediction_result(top_classes[0], confidences[0])
 
-            # Получаем питание
             nutrition_info = nutrition_ctrl.get_nutrition(top_classes[0])
-
-            # Перевод названия (если нужно)
             product_name_ru = nutrition_ctrl.translate_if_needed(nutrition_info, top_classes[0])
 
             if nutrition_info:
@@ -84,9 +87,9 @@ def main():
             else:
                 show_no_nutrition_warning()
 
-            # Сохраняем историю в БД
-            predict_ctrl.save_history(user.id, top_classes[0], confidences[0])
+            predict_ctrl.save_history(user["id"], top_classes[0], confidences[0])
 
 if __name__ == "__main__":
+    init_db()
     main()
 

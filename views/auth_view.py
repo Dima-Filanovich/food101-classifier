@@ -2,9 +2,9 @@ import streamlit as st
 
 def show_login():
     st.header("Вход")
-    username = st.text_input("Имя пользователя")
-    password = st.text_input("Пароль", type="password")
-    login_clicked = st.button("Войти")
+    username = st.text_input("Имя пользователя", key="login_username")
+    password = st.text_input("Пароль", type="password", key="login_password")
+    login_clicked = st.button("Войти", key="login_button")
     return username, password, login_clicked
 
 def show_register():
@@ -12,12 +12,12 @@ def show_register():
     username = st.text_input("Имя пользователя", key="reg_username")
     password = st.text_input("Пароль", type="password", key="reg_password")
     confirm_password = st.text_input("Подтвердите пароль", type="password", key="reg_confirm")
-    register_clicked = st.button("Зарегистрироваться")
+    register_clicked = st.button("Зарегистрироваться", key="register_button")
     return username, password, confirm_password, register_clicked
 
 def show_logout(username):
     st.write(f"Вы вошли как **{username}**")
-    if st.button("Выйти"):
+    if st.button("Выйти", key="logout_button"):
         return True
     return False
 
