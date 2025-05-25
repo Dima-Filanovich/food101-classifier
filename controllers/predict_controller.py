@@ -4,6 +4,7 @@ from PIL import Image
 from keras.layers import TFSMLayer
 from models.history_model import add_history
 import functools
+from fpdf import FPDF
 
 class PredictController:
     def __init__(self):
@@ -81,5 +82,32 @@ class PredictController:
             "summary": summary,
             "is_confident": is_confident
         }
+        
+    def make_report(self, predicted_class, confidence, nutrition_info, product_name_ru):
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
 
+        pdf.cell(200, 10, txt="Отчет по классификации блюда", ln=True, align="C")
+        pdf.ln(10)
+
+        pdf.cell(200, 10, txt=f"Класс: {predicted_class}", ln=True)
+        pdf.cell(200, 10, txt=f"Уверенность: {confidence:.2%}", ln=True)
+        pdf.cell(200, 10, txt=f"Название на русском: {product_name_ru}", ln=True)
+        pdf.ln(5)
+
+        if nutrition_info:
+            pdf.cell(200, 10, txt="Пищевая информация (на 100г):", ln=True)
+            pdf.cell(200, 10, txt=f"Энергия: {nutrition_info.get('energy_kcal', 'нет данных')} ккал", ln=True)
+            pdf.cell(200, 10, txt=f"Белки: {nutrition_info.get('proteins', 'нет данных')} г", ln=True)
+            pdf.cell(200, 10, txt=f"Жиры: {nutrition_info.get('fat', 'нет данных')} г", ln=True)
+            pdf.cell(200, 10, txt=f"Углеводы: {nutrition_info.get('carbohydrates', 'нет данных')} г", ln=True)
+            pdf.cell(200, 10, txt=f"Источник: {nutrition_info.get('url', 'неизвестно')}", ln=True)
+
+        # Временный файл
+        temp_dir = tempfile.gettempdir()
+        report_path = os.path.join(temp_dir, "report.pdf")
+        pdf.output(report_path)
+
+        return report_path
 
