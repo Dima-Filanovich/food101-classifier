@@ -1,4 +1,5 @@
 ﻿import streamlit as st
+from models.database import init_db  # <-- импорт
 
 from controllers.auth_controller import AuthController
 from controllers.predict_controller import PredictController
@@ -11,6 +12,7 @@ from views.prediction_view import (
 )
 
 def main():
+    init_db()
     st.set_page_config(page_title="Food101 Classifier", page_icon="🍽️")
 
     auth_ctrl = AuthController()
