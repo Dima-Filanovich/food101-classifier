@@ -6,7 +6,7 @@ import streamlit as st
 class NutritionController:
     @staticmethod
     @st.cache_data(show_spinner=False)
-    def get_nutrition_info(self, food_name: str):
+    def get_nutrition_info(food_name: str):
         query = urllib.parse.quote(food_name.lower())
         url = f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={query}&search_simple=1&action=process&json=1&page_size=1"
         response = requests.get(url)
