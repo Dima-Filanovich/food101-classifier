@@ -13,7 +13,6 @@ from views.prediction_view import (
 )
 
 def main():
-    # ✅ Инициализация базы
     init_db()
     st.set_page_config(page_title="Food101 Classifier", page_icon="🍽️")
 
@@ -28,34 +27,46 @@ def main():
         st.title("Добро пожаловать в Food101 Classifier")
         tab_login, tab_register = st.tabs(["Вход", "Регистрация"])
 
+        # === ВХОД ===
         with tab_login:
             username, password, login_clicked = show_login()
             if login_clicked:
-                with st.spinner("⏳ Входим в систему..."):
-                    try:
-                        success, msg, user = auth_ctrl.login(username, password)
-                        if success:
-                            st.session_state.user = user
-                            show_success("✅ Успешный вход!")
-                            time.sleep(1)  # Дать время показать сообщение
-                            st.rerun()
-                        else:
-                            show_error(msg)
-                    except Exception as e:
-                        show_error(f"❌ Ошибка при входе: {e}")
+                feedback = st.empty()
+                with feedback.container():
+                    with st.spinner("⏳ Входим в систему..."):
+                        time.sleep(0.5)
+                        try:
+                            success, msg, user = auth_ctrl.login(username, password)
+                            if success:
+                                st.session_state.user = user
+                                show_success("✅ Успешный вход!")
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                show_error(msg)
+                        except Exception as e:
+                            show_error(f"❌ Ошибка при входе: {e}")
+                feedback.empty()
 
+        # === РЕГИСТРАЦИЯ ===
         with tab_register:
             username, password, confirm_password, register_clicked = show_register()
             if register_clicked:
-                with st.spinner("⏳ Регистрируем пользователя..."):
-                    try:
-                        success, msg = auth_ctrl.register(username, password, confirm_password)
-                        if success:
-                            show_success("✅ Регистрация прошла успешно! Войдите в систему.")
-                        else:
-                            show_error(msg)
-                    except Exception as e:
-                        show_error(f"❌ Ошибка при регистрации: {e}")
+                feedback = st.empty()
+                with feedback.container():
+                    with st.spinner("⏳ Регистрируем пользователя..."):
+                        time.sleep(0.5)
+                        try:
+                            success, msg = auth_ctrl.register(username, password, confirm_password)
+                            if success:
+                                show_success("✅ Регистрация прошла успешно! Войдите в систему.")
+                            else:
+                                show_error(msg)
+                        except Exception as e:
+                            show_error(f"❌ Ошибка при регистрации: {e}")
+                feedback.empty()
+
+    # === АВТОРИЗОВАННЫЙ ПОЛЬЗОВАТЕЛЬ ===
     else:
         user = st.session_state.user
         if show_logout(user["username"]):
@@ -65,31 +76,32 @@ def main():
         uploaded_file = show_upload_section()
 
         if uploaded_file:
-            image = predict_ctrl.load_image(uploaded_file)
-            show_image(image)
+            with st.spinner("⏳ Обрабатываем изображение..."):
+                image = predict_ctrl.load_image(uploaded_file)
+                show_image(image)
 
-            top_classes, confidences = predict_ctrl.predict(image)
-            show_predictions(top_classes, confidences)
+                top_classes, confidences = predict_ctrl.predict(image)
+                show_predictions(top_classes, confidences)
 
-            show_prediction_result(top_classes[0], confidences[0])
+                show_prediction_result(top_classes[0], confidences[0])
 
-            nutrition_info = nutrition_ctrl.get_nutrition(top_classes[0])
-            product_name_ru = nutrition_ctrl.translate_if_needed(nutrition_info, top_classes[0])
+                nutrition_info = nutrition_ctrl.get_nutrition(top_classes[0])
+                product_name_ru = nutrition_ctrl.translate_if_needed(nutrition_info, top_classes[0])
 
-            if nutrition_info:
-                show_nutrition_info(nutrition_info, top_classes[0], product_name_ru)
+                if nutrition_info:
+                    show_nutrition_info(nutrition_info, top_classes[0], product_name_ru)
 
-                report = predict_ctrl.make_report(
-                    predicted_class=top_classes[0],
-                    confidence=confidences[0],
-                    nutrition_info=nutrition_info,
-                    product_name_ru=product_name_ru
-                )
-                show_download_report(report)
-            else:
-                show_no_nutrition_warning()
+                    report = predict_ctrl.make_report(
+                        predicted_class=top_classes[0],
+                        confidence=confidences[0],
+                        nutrition_info=nutrition_info,
+                        product_name_ru=product_name_ru
+                    )
+                    show_download_report(report)
+                else:
+                    show_no_nutrition_warning()
 
-            predict_ctrl.save_history(user["id"], top_classes[0], confidences[0])
+                predict_ctrl.save_history(user["id"], top_classes[0], confidences[0])
 
 if __name__ == "__main__":
     init_db()
