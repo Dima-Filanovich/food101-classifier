@@ -10,17 +10,17 @@ class AuthController:
         return hashlib.sha256(password.encode()).hexdigest()
 
     def register(self, username: str, password: str, confirm_password: str):
-    if not username or not password or not confirm_password:
-        return False, "Пожалуйста, заполните все поля"
+        if not username or not password or not confirm_password:
+            return False, "Пожалуйста, заполните все поля"
 
-    if password != confirm_password:
-        return False, "Пароли не совпадают"
+        if password != confirm_password:
+            return False, "Пароли не совпадают"
 
-    try:
-        if get_user(username):
-            return False, "Пользователь с таким именем уже существует"
-    except Exception as e:
-        return False, f"Ошибка при проверке пользователя: {e}"
+        try:
+            if get_user(username):
+                return False, "Пользователь с таким именем уже существует"
+        except Exception as e:
+            return False, f"Ошибка при проверке пользователя: {e}"
 
     password_hash = self.hash_password(password)
     try:
