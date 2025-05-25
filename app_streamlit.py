@@ -1,4 +1,5 @@
-﻿import streamlit as st
+﻿import time
+import streamlit as st
 from models.database import init_db
 
 from controllers.auth_controller import AuthController
@@ -30,13 +31,14 @@ def main():
         with tab_login:
             username, password, login_clicked = show_login()
             if login_clicked:
-                with st.spinner("⏳ Выполняется вход... Пожалуйста, подождите."):
+                with st.spinner("⏳ Входим в систему..."):
                     try:
                         success, msg, user = auth_ctrl.login(username, password)
                         if success:
                             st.session_state.user = user
                             show_success("✅ Успешный вход!")
-                            st.experimental_rerun()
+                            time.sleep(1)  # Дать время показать сообщение
+                            st.rerun()
                         else:
                             show_error(msg)
                     except Exception as e:
@@ -45,20 +47,20 @@ def main():
         with tab_register:
             username, password, confirm_password, register_clicked = show_register()
             if register_clicked:
-                with st.spinner("🌀 Регистрируем пользователя... Пожалуйста, подождите."):
+                with st.spinner("⏳ Регистрируем пользователя..."):
                     try:
                         success, msg = auth_ctrl.register(username, password, confirm_password)
                         if success:
-                            show_success("✅ Регистрация прошла успешно! Теперь войдите.")
+                            show_success("✅ Регистрация прошла успешно! Войдите в систему.")
                         else:
                             show_error(msg)
                     except Exception as e:
                         show_error(f"❌ Ошибка при регистрации: {e}")
     else:
         user = st.session_state.user
-        if show_logout(user["username"]):  # ✅ user — dict, не объект
+        if show_logout(user["username"]):
             st.session_state.user = None
-            st.experimental_rerun()
+            st.rerun()
 
         uploaded_file = show_upload_section()
 
