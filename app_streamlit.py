@@ -81,7 +81,7 @@ def main():
 
             show_prediction_result(top_classes[0], confidences[0])
 
-            nutrition_info = nutrition_ctrl.get_nutrition(top_classes[0])
+            nutrition_info = nutrition_ctrl.get_nutrition_info(top_classes[0])
             product_name_ru = nutrition_ctrl.translate_if_needed(nutrition_info, top_classes[0])
 
             if nutrition_info:
