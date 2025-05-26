@@ -125,17 +125,17 @@ class PredictController:
         except Exception as e:
             print(f"Ошибка при сохранении истории: {e}")
     def get_history(self, user_id: int, limit: int = 10):
-    try:
-        records = get_history_by_user(user_id, limit)
-        return [
-            {
-                "image_name": row[0],
-                "predicted_class": row[1],
-                "confidence": row[2],
-                "timestamp": row[3],
-            }
-            for row in records
-        ]
-    except Exception as e:
-        print(f"Ошибка при получении истории: {e}")
-        return []
+        try:
+            records = get_history_by_user(user_id, limit)
+            return [
+                {
+                    "image_name": row[0],
+                    "predicted_class": row[1],
+                    "confidence": row[2],
+                    "timestamp": row[3],
+                }
+                for row in records
+            ]
+        except Exception as e:
+            print(f"Ошибка при получении истории: {e}")
+            return []
