@@ -6,7 +6,7 @@ def add_history(user_id, image_name, prediction, confidence):
     cursor.execute("""
         INSERT INTO history (user_id, image_name, prediction, confidence)
         VALUES (?, ?, ?, ?)
-    """, (user_id, image_name, prediction, confidence))
+    """, (user_id, image_name, prediction, float(confidence)))
     conn.commit()
     conn.close()
 
