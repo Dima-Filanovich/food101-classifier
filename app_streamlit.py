@@ -36,7 +36,6 @@ def main():
             show_success("✅ Регистрация прошла успешно! Пожалуйста, войдите.")
             st.session_state.register_success = False
 
-        # Блокируем переключение режима во время загрузки
         disabled = st.session_state.is_loading
         st.session_state.auth_mode = st.radio(
             "Выберите действие", ["Вход", "Регистрация"],
@@ -48,25 +47,27 @@ def main():
         if disabled:
             st.info("⏳ Пожалуйста, подождите...")
 
-        if st.session_state.auth_mode == "Вход":
-            username, password, login_clicked = show_login(disabled=disabled)
-            if login_clicked and not disabled:
-                st.session_state.login_clicked = True
-                st.session_state.login_username = username
-                st.session_state.login_password = password
-                st.session_state.is_loading = True
-                st.rerun()
+        # Отображение форм только если не идет загрузка
+        if not st.session_state.is_loading:
+            if st.session_state.auth_mode == "Вход":
+                username, password, login_clicked = show_login(disabled=False)
+                if login_clicked:
+                    st.session_state.login_clicked = True
+                    st.session_state.login_username = username
+                    st.session_state.login_password = password
+                    st.session_state.is_loading = True
+                    st.rerun()
 
-        elif st.session_state.auth_mode == "Регистрация":
-            username, password, confirm_password, register_clicked = show_register(disabled=disabled)
-            if register_clicked and not disabled:
-                st.session_state.register_clicked = True
-                st.session_state.register_data = (username, password, confirm_password)
-                st.session_state.is_loading = True
-                st.rerun()
+            elif st.session_state.auth_mode == "Регистрация":
+                username, password, confirm_password, register_clicked = show_register(disabled=False)
+                if register_clicked:
+                    st.session_state.register_clicked = True
+                    st.session_state.register_data = (username, password, confirm_password)
+                    st.session_state.is_loading = True
+                    st.rerun()
 
         # Обработка входа
-        if st.session_state.login_clicked:
+        elif st.session_state.login_clicked:
             with st.spinner("⏳ Входим в систему..."):
                 try:
                     success, msg, user = auth_ctrl.login(
@@ -84,9 +85,10 @@ def main():
                     show_error(f"❌ Ошибка при входе: {e}")
                 finally:
                     st.session_state.is_loading = False
+                    st.session_state.login_clicked = False
 
         # Обработка регистрации
-        if st.session_state.register_clicked:
+        elif st.session_state.register_clicked:
             with st.spinner("⏳ Регистрируем пользователя..."):
                 try:
                     username, password, confirm_password = st.session_state.register_data
@@ -101,6 +103,7 @@ def main():
                     show_error(f"❌ Ошибка при регистрации: {e}")
                 finally:
                     st.session_state.is_loading = False
+                    st.session_state.register_clicked = False
 
     else:
         user = st.session_state.user
