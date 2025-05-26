@@ -91,7 +91,7 @@ def main():
                     predicted_class=top_classes[0],
                     confidence=confidences[0],
                     nutrition_info=nutrition_info,
-                    product_name_ru=product_name_ru
+                    
                 )
                 show_download_report(report)
             else:
