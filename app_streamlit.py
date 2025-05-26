@@ -22,12 +22,15 @@ def main():
     for key in [
         "user", "register_success", "login_clicked", "register_clicked", 
         "is_loading", "login_username", "login_password", "register_data", 
-        "auth_mode"
+        "auth_mode", "auth_mode_prev"
     ]:
         if key not in st.session_state:
             st.session_state[key] = None if key == "user" else False
 
-    st.session_state.auth_mode = st.session_state.auth_mode or "Вход"
+    if not st.session_state.auth_mode:
+        st.session_state.auth_mode = "Вход"
+    if not st.session_state.auth_mode_prev:
+        st.session_state.auth_mode_prev = st.session_state.auth_mode
 
     if st.session_state.user is None:
         st.title("Добро пожаловать в Food101 Classifier")
@@ -36,18 +39,25 @@ def main():
             show_success("✅ Регистрация прошла успешно! Пожалуйста, войдите.")
             st.session_state.register_success = False
 
-        disabled = st.session_state.is_loading
-        st.session_state.auth_mode = st.radio(
+        if st.session_state.is_loading:
+            st.info("⏳ Пожалуйста, подождите...")
+
+        # Радио переключение
+        selected_mode = st.radio(
             "Выберите действие", ["Вход", "Регистрация"],
             index=0 if st.session_state.auth_mode == "Вход" else 1,
             horizontal=True,
-            disabled=disabled
+            disabled=st.session_state.is_loading
         )
 
-        if disabled:
-            st.info("⏳ Пожалуйста, подождите...")
+        # Проверка на смену вкладки
+        if selected_mode != st.session_state.auth_mode:
+            st.session_state.auth_mode_prev = st.session_state.auth_mode
+            st.session_state.auth_mode = selected_mode
+            st.session_state.is_loading = True
+            st.rerun()
 
-        # Отображение форм только если не идет загрузка
+        # Отображение форм
         if not st.session_state.is_loading:
             if st.session_state.auth_mode == "Вход":
                 username, password, login_clicked = show_login(disabled=False)
@@ -172,6 +182,7 @@ def main():
 if __name__ == "__main__":
     init_db()
     main()
+
 
 
 
