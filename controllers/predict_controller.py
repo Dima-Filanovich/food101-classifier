@@ -3,6 +3,7 @@ import tensorflow as tf
 from PIL import Image
 from keras.layers import TFSMLayer
 from models.history_model import add_history
+from models.history_model import get_history_by_user
 import functools
 from fpdf import FPDF
 import tempfile
@@ -123,4 +124,18 @@ class PredictController:
             add_history(user_id, image_name, prediction, confidence)
         except Exception as e:
             print(f"Ошибка при сохранении истории: {e}")
-
+    def get_history(self, user_id: int, limit: int = 10):
+    try:
+        records = get_history_by_user(user_id, limit)
+        return [
+            {
+                "image_name": row[0],
+                "predicted_class": row[1],
+                "confidence": row[2],
+                "timestamp": row[3],
+            }
+            for row in records
+        ]
+    except Exception as e:
+        print(f"Ошибка при получении истории: {e}")
+        return []

@@ -98,6 +98,21 @@ def main():
                 show_no_nutrition_warning()
 
             predict_ctrl.save_history(user["id"], top_classes[0], confidences[0], uploaded_file.name)
+            # Показываем историю предсказаний
+            history = predict_ctrl.get_history(user["id"])
+            if history:
+                with st.expander("🕘 История ваших предсказаний (последние 10):", expanded=False):
+                    for item in history:
+                        st.markdown(f"""
+                        **📷 Изображение:** {item['image_name']}  
+                        **🍽 Предсказание:** {item['predicted_class']}  
+                        **✅ Уверенность:** {item['confidence']:.2%}  
+                        **🕒 Дата:** {item['timestamp']}  
+                        ---
+                        """)
+            else:
+                st.info("История пуста.")
+
 
 
 if __name__ == "__main__":
