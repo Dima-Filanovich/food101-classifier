@@ -1,180 +1,195 @@
 ﻿import streamlit as st
-from models.database import init_db
+import tensorflow as tf
+import numpy as np
+from PIL import Image
+import requests
+import urllib.parse
+from deep_translator import GoogleTranslator
+from keras.layers import TFSMLayer
+import pandas as pd
+import altair as alt
+import io
 
-from controllers.auth_controller import AuthController
-from controllers.predict_controller import PredictController
-from controllers.nutrition_controller import NutritionController
+# ВРЕМЕННОЕ ОТКЛЮЧЕНИЕ ПРИЛОЖЕНИЯ
+MAINTENANCE_MODE = False
+if MAINTENANCE_MODE:
+    st.error("🚧 Приложение находится на обслуживании. Возвращайтесь позже.")
+    st.stop()
 
-from views.auth_view import show_login, show_register, show_logout, show_error, show_success
-from views.prediction_view import (
-    show_upload_section, show_image, show_predictions, show_prediction_result,
-    show_nutrition_info, show_download_report, show_no_nutrition_warning
-)
+# Загрузка модели
+@st.cache_resource
+def load_model():
+    return TFSMLayer("food101_modelon", call_endpoint="serving_default")
 
-def main():
-    init_db()
-    st.set_page_config(page_title="Food101 Classifier", page_icon="🍽️")
+model = load_model()
 
-    auth_ctrl = AuthController()
-    predict_ctrl = PredictController()
-    nutrition_ctrl = NutritionController()
+# Список классов
+CLASS_NAMES = [
+    'apple_pie', 'baby_back_ribs', 'baklava', 'beef_carpaccio', 'beef_tartare',
+    'beet_salad', 'beignets', 'bibimbap', 'bread_pudding', 'breakfast_burrito',
+    'bruschetta', 'caesar_salad', 'cannoli', 'caprese_salad', 'carrot_cake',
+    'ceviche', 'cheesecake', 'cheese_plate', 'chicken_curry', 'chicken_quesadilla',
+    'chicken_wings', 'chocolate_cake', 'chocolate_mousse', 'churros', 'clam_chowder',
+    'club_sandwich', 'crab_cakes', 'creme_brulee', 'croque_madame', 'cup_cakes',
+    'deviled_eggs', 'donuts', 'dumplings', 'edamame', 'eggs_benedict',
+    'escargots', 'falafel', 'filet_mignon', 'fish_and_chips', 'foie_gras',
+    'french_fries', 'french_onion_soup', 'french_toast', 'fried_calamari', 'fried_rice',
+    'frozen_yogurt', 'garlic_bread', 'gnocchi', 'greek_salad', 'grilled_cheese_sandwich',
+    'grilled_salmon', 'guacamole', 'gyoza', 'hamburger', 'hot_and_sour_soup',
+    'hot_dog', 'huevos_rancheros', 'hummus', 'ice_cream', 'lasagna',
+    'lobster_bisque', 'lobster_roll_sandwich', 'macaroni_and_cheese', 'macarons', 'miso_soup',
+    'mussels', 'nachos', 'omelette', 'onion_rings', 'oysters',
+    'pad_thai', 'paella', 'pancakes', 'panna_cotta', 'peking_duck',
+    'pho', 'pizza', 'pork_chop', 'poutine', 'prime_rib',
+    'pulled_pork_sandwich', 'ramen', 'ravioli', 'red_velvet_cake', 'risotto',
+    'samosa', 'sashimi', 'scallops', 'seaweed_salad', 'shrimp_and_grits',
+    'spaghetti_bolognese', 'spaghetti_carbonara', 'spring_rolls', 'steak', 'strawberry_shortcake',
+    'sushi', 'tacos', 'takoyaki', 'tiramisu', 'tuna_tartare',
+    'waffles'
+]
 
-    # Инициализация состояния
-    for key, default in {
-        "user": None,
-        "register_success": False,
-        "login_clicked": False,
-        "register_clicked": False,
-        "is_loading": False,
-        "login_username": "",
-        "login_password": "",
-        "register_data": ("", "", "")
-    }.items():
-        if key not in st.session_state:
-            st.session_state[key] = default
 
-    if st.session_state.user is None:
-        st.title("Добро пожаловать в Food101 Classifier")
 
-        if st.session_state.register_success:
-            st.success("✅ Регистрация прошла успешно! Пожалуйста, войдите.")
-            st.session_state.register_success = False
 
-        tab_login, tab_register = st.tabs(["Вход", "Регистрация"])
+# Предобработка изображения
+def preprocess_image(image: Image.Image) -> np.ndarray:
+    image = image.resize((224, 224))
+    img_array = tf.keras.preprocessing.image.img_to_array(image)
+    img_array = tf.keras.applications.efficientnet.preprocess_input(img_array)
+    return np.expand_dims(img_array, axis=0)
 
-        # Вход
-        with tab_login:
-            username, password, login_clicked = show_login()
-            if login_clicked and not st.session_state.is_loading:
-                st.session_state.login_clicked = True
-                st.session_state.login_username = username
-                st.session_state.login_password = password
-                st.session_state.is_loading = True
-                st.rerun()
+# Получение информации о пище
+def get_nutrition_info(food_name):
+    query = urllib.parse.quote(food_name.lower())
+    url = f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={query}&search_simple=1&action=process&json=1&page_size=1"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("products"):
+            product = data["products"][0]
+            nutriments = product.get("nutriments", {})
+            return {
+                "product_name": product.get("product_name", ""),
+                "product_name_ru": product.get("product_name_ru", ""),
+                "energy_kcal": nutriments.get("energy-kcal_100g"),
+                "proteins": nutriments.get("proteins_100g"),
+                "fat": nutriments.get("fat_100g"),
+                "carbohydrates": nutriments.get("carbohydrates_100g"),
+                "url": product.get("url", "")
+            }
+    return None
 
-        if st.session_state.login_clicked and st.session_state.is_loading:
-            with st.spinner("⏳ Входим в систему..."):
-                try:
-                    success, msg, user = auth_ctrl.login(
-                        st.session_state.login_username,
-                        st.session_state.login_password
-                    )
-                    if success:
-                        st.session_state.user = user
-                        st.session_state.login_clicked = False
-                        st.session_state.is_loading = False
-                        st.rerun()
-                    else:
-                        show_error(msg)
-                except Exception as e:
-                    show_error(f"❌ Ошибка при входе: {e}")
-                finally:
-                    st.session_state.is_loading = False
-                    st.session_state.login_clicked = False
+# Интерфейс
 
-        # Регистрация
-        with tab_register:
-            username, password, confirm_password, register_clicked = show_register()
-            if register_clicked and not st.session_state.is_loading:
-                st.session_state.register_clicked = True
-                st.session_state.register_data = (username, password, confirm_password)
-                st.session_state.is_loading = True
-                st.rerun()
+st.title("🍽️ Классификатор еды — Food101")
+st.write("Загрузите изображение блюда, и модель определит его категорию. Точность модели 73%")
+with st.expander("📖 Посмотреть все категории, которые распознаёт модель"):
+    st.markdown(", ".join(f"`{c.replace('_', ' ').title()}`" for c in CLASS_NAMES))
 
-        if st.session_state.register_clicked and st.session_state.is_loading:
-            with st.spinner("⏳ Регистрируем пользователя..."):
-                try:
-                    username, password, confirm_password = st.session_state.register_data
-                    success, msg = auth_ctrl.register(username, password, confirm_password)
-                    if success:
-                        st.session_state.register_success = True
-                        st.session_state.register_clicked = False
-                        st.session_state.is_loading = False
-                        st.rerun()
-                    else:
-                        show_error(msg)
-                except Exception as e:
-                    show_error(f"❌ Ошибка при регистрации: {e}")
-                finally:
-                    st.session_state.is_loading = False
-                    st.session_state.register_clicked = False
 
+uploaded_file = st.file_uploader("📤 Выберите изображение...", type=["jpg", "jpeg", "png"])
+
+# Пример, если нет файла
+if uploaded_file is None:
+    st.info("Вы можете загрузить изображение. Вот пример:")
+    example_url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsfW388zWeoTBoYVtL5yJi85sJmFoVB3isLw&s"
+    example_img = Image.open(requests.get(example_url, stream=True).raw).convert("RGB")
+    st.image(example_img, caption="Пример: Хот-дог", use_container_width=True)
+
+    # Скачивание изображения
+    img_byte_arr = io.BytesIO()
+    example_img.save(img_byte_arr, format='JPEG')
+    st.download_button(
+        label="📥 Скачать пример изображения",
+        data=img_byte_arr.getvalue(),
+        file_name="example_hotdog.jpg",
+        mime="image/jpeg"
+    )
+
+# Обработка изображения
+if uploaded_file is not None:
+    image = Image.open(uploaded_file).convert("RGB")
+    st.image(image, caption="Загруженное изображение", use_container_width=True)
+
+    st.write("🔍 Результат распознавания:")
+    img_batch = preprocess_image(image)
+    img_tensor = tf.convert_to_tensor(img_batch)
+    with st.spinner("🔍 Анализ изображения..."):
+    	output_dict = model(img_tensor)
+    	predictions = list(output_dict.values())[0].numpy()[0]
+
+    # Топ-3
+    top_indices = predictions.argsort()[-3:][::-1]
+    top_classes = [CLASS_NAMES[i].replace('_', ' ').title() for i in top_indices]
+    confidences = [predictions[i] for i in top_indices]
+
+    st.subheader("🔝 Топ-3 предсказания:")
+    for name, conf in zip(top_classes, confidences):
+        st.write(f"{name}: {conf:.2%}")
+
+    # График
+    df = pd.DataFrame({"Блюдо": top_classes, "Уверенность": confidences})
+    chart = alt.Chart(df).mark_bar().encode(
+        x=alt.X("Уверенность:Q", axis=alt.Axis(format=".0%")),
+        y=alt.Y("Блюдо:N", sort='-x'),
+        color=alt.Color("Блюдо:N", legend=None)
+    ).properties(height=150)
+    st.altair_chart(chart, use_container_width=True)
+
+    # Основной результат
+    predicted_class = top_classes[0]
+    if confidences[0] < 0.5:
+    	st.warning(f"⚠️ Модель не уверена в распознавании (уверенность: {confidences[0]:.2%}). Возможно, 	изображение не соответствует ни одной из категорий точно. Предположение: **{predicted_class}**")
     else:
-        user = st.session_state.user
-        if show_logout(user["username"]):
-            for key in [
-                "user", "login_clicked", "register_clicked", "is_loading",
-                "login_username", "login_password", "register_data"
-            ]:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.rerun()
+        st.success(f"🍽️ Это скорее всего: **{predicted_class}** ({confidences[0]:.2%} уверенности)")
 
 
-        uploaded_file = show_upload_section()
+    # КЭШИРОВАННАЯ загрузка пищевой ценности
+    @st.cache_data(show_spinner=False)
+    def get_nutrition_info_cached(food_name):
+        return get_nutrition_info(food_name)
 
-        if uploaded_file:
-            image = predict_ctrl.load_image(uploaded_file)
-            show_image(image)
+    # Пищевая информация с ожиданием
+    with st.spinner("⏳ Получение информации о пищевой ценности..."):
+        nutrition_info = get_nutrition_info_cached(predicted_class)
 
-            top_classes, confidences = predict_ctrl.predict(image)
-            show_predictions(top_classes, confidences)
-            show_prediction_result(top_classes[0], confidences[0])
+    if nutrition_info:
+        st.subheader("🧪 Пищевая ценность (на 100г):")
+        st.write(f"**Калории:** {nutrition_info['energy_kcal']} ккал")
+        st.write(f"**Белки:** {nutrition_info['proteins']} г")
+        st.write(f"**Жиры:** {nutrition_info['fat']} г")
+        st.write(f"**Углеводы:** {nutrition_info['carbohydrates']} г")
 
-            with st.spinner("⏳ Получение информации о пищевой ценности..."):
-                nutrition_info = nutrition_ctrl.get_nutrition_info(top_classes[0])
-                product_name_ru = nutrition_ctrl.translate_if_needed(nutrition_info, top_classes[0])
+        product_name_ru = nutrition_info.get("product_name_ru")
+        if not product_name_ru:
+            try:
+                product_name_ru = GoogleTranslator(source='en', target='ru').translate(predicted_class)
+            except Exception:
+                product_name_ru = "Перевод недоступен"
+        st.write(f"**Название на русском:** {product_name_ru}")
 
-            if nutrition_info:
-                show_nutrition_info(nutrition_info, top_classes[0], product_name_ru)
-                report = predict_ctrl.make_report(
-                    predicted_class=top_classes[0],
-                    confidence=confidences[0],
-                    nutrition_info=nutrition_info,
-                )
-                show_download_report(report)
-            else:
-                show_no_nutrition_warning()
+        if nutrition_info.get("url"):
+            st.markdown(f"[📎 Подробнее на Open Food Facts]({nutrition_info['url']})")
 
-            predict_ctrl.save_history(user["id"], top_classes[0], confidences[0], uploaded_file.name)
+        # Скачать отчёт
+        report = f"""
+Предсказанное блюдо: {predicted_class}
+Уверенность: {confidences[0]:.2%}
 
-            # История
-            history = predict_ctrl.get_history(user["id"])
-            for item in history:
-                image_name = item['image_name']
-                predicted_class = item['predicted_class']
-                confidence = item['confidence']
-                timestamp = item['timestamp']
-
-                if isinstance(image_name, bytes):
-                    image_name = image_name.decode("utf-8")
-                if isinstance(predicted_class, bytes):
-                    predicted_class = predicted_class.decode("utf-8")
-                if isinstance(confidence, bytes):
-                    try:
-                        confidence = float(confidence.decode("utf-8"))
-                    except Exception:
-                        confidence = 0.0
-                elif not isinstance(confidence, float):
-                    try:
-                        confidence = float(confidence)
-                    except Exception:
-                        confidence = 0.0
-                if isinstance(timestamp, bytes):
-                    timestamp = timestamp.decode("utf-8")
-
-                st.markdown(f"""
-                **📷 Изображение:** {image_name}  
-                **🍽 Предсказание:** {predicted_class}  
-                **✅ Уверенность:** {confidence:.2%}  
-                **🕒 Дата:** {timestamp}  
-                ---
-                """)
-
-if __name__ == "__main__":
-    init_db()
-    main()
-
+Калории: {nutrition_info['energy_kcal']} ккал
+Белки: {nutrition_info['proteins']} г
+Жиры: {nutrition_info['fat']} г
+Углеводы: {nutrition_info['carbohydrates']} г
+Название на русском: {product_name_ru}
+"""
+        st.download_button(
+            label="📥 Скачать отчёт",
+            data=report,
+            file_name="food_prediction_report.txt",
+            mime="text/plain"
+        )
+    else:
+        st.warning("⚠️ Информация о пищевой ценности не найдена.")
 
 
 
