@@ -100,26 +100,29 @@ def main():
             predict_ctrl.save_history(user["id"], top_classes[0], confidences[0], uploaded_file.name)
             # Показываем историю предсказаний
             history = predict_ctrl.get_history(user["id"])
-            if history:
-                with st.expander("🕘 История ваших предсказаний (последние 10):", expanded=False):
-                    for item in history:
-                        image_name = item['image_name']
-                        if isinstance(image_name, bytes):
-                            image_name = image_name.decode("utf-8")
+            for item in history:
+                image_name = item['image_name']
+                predicted_class = item['predicted_class']
+                confidence = item['confidence']
+                timestamp = item['timestamp']
 
-                        predicted_class = item['predicted_class']
-                        confidence = item['confidence']
-                        timestamp = item['timestamp']
+                if isinstance(image_name, bytes):
+                    image_name = image_name.decode("utf-8")
+                if isinstance(predicted_class, bytes):
+                    predicted_class = predicted_class.decode("utf-8")
+                if isinstance(confidence, bytes):
+                    confidence = float(confidence.decode("utf-8"))
+                if isinstance(timestamp, bytes):
+                    timestamp = timestamp.decode("utf-8")
 
-                        st.markdown(f"""
-                        **📷 Изображение:** {image_name}  
-                        **🍽 Предсказание:** {predicted_class}  
-                        **✅ Уверенность:** {confidence:.2%}  
-                        **🕒 Дата:** {timestamp}  
-                        ---
-                        """)
-            else:
-                st.info("История пуста.")
+                st.markdown(f"""
+                **📷 Изображение:** {image_name}  
+                **🍽 Предсказание:** {predicted_class}  
+                **✅ Уверенность:** {confidence:.2%}  
+                **🕒 Дата:** {timestamp}  
+                ---
+                """)
+
 
 
 
