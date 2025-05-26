@@ -6,6 +6,7 @@ from models.history_model import add_history
 import functools
 from fpdf import FPDF
 import tempfile
+import os
 
 class PredictController:
     def __init__(self):
