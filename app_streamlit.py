@@ -102,8 +102,14 @@ def main():
     else:
         user = st.session_state.user
         if show_logout(user["username"]):
-            st.session_state.user = None
+            for key in [
+                "user", "login_clicked", "register_clicked", "is_loading",
+                "login_username", "login_password", "register_data"
+            ]:
+                if key in st.session_state:
+                    del st.session_state[key]
             st.rerun()
+
 
         uploaded_file = show_upload_section()
 
