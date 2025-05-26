@@ -7,6 +7,7 @@ import functools
 from fpdf import FPDF
 import tempfile
 import os
+import io
 
 class PredictController:
     def __init__(self):
