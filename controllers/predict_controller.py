@@ -98,7 +98,7 @@ class PredictController:
         pdf.cell(200, 10, txt=f"Класс: {predicted_class}", ln=True)
         pdf.cell(200, 10, txt=f"Уверенность: {confidence:.2f}", ln=True)
         pdf.cell(200, 10, txt=f"Название продукта: {nutrition_info.get('product_name')}", ln=True)
-        pdf.cell(200, 10, txt=f"Перевод: {nutrition_info.get('product_name_ru')}", ln=True)
+        
         pdf.cell(200, 10, txt=f"Калории: {nutrition_info.get('energy_kcal')} ккал", ln=True)
         pdf.cell(200, 10, txt=f"Белки: {nutrition_info.get('proteins')} г", ln=True)
         pdf.cell(200, 10, txt=f"Жиры: {nutrition_info.get('fat')} г", ln=True)
