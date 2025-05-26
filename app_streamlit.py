@@ -103,6 +103,10 @@ def main():
             if history:
                 with st.expander("🕘 История ваших предсказаний (последние 10):", expanded=False):
                     for item in history:
+                        image_name = item['image_name']
+                        if isinstance(image_name, bytes):
+                            image_name = image_name.decode("utf-8")
+                        
                         st.markdown(f"""
                         **📷 Изображение:** {item['image_name']}  
                         **🍽 Предсказание:** {item['predicted_class']}  
