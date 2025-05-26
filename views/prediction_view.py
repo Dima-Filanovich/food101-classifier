@@ -47,12 +47,12 @@ def show_nutrition_info(nutrition_info, predicted_class, product_name_ru):
     if nutrition_info.get("url"):
         st.markdown(f"[📎 Подробнее на Open Food Facts]({nutrition_info['url']})")
 
-def show_download_report(report):
+def show_download_report(pdf_bytes: bytes):
     st.download_button(
         label="📥 Скачать отчёт",
-        data=report,
-        file_name="food_prediction_report.txt",
-        mime="text/plain"
+        data=pdf_bytes,
+        file_name="food_prediction_report.pdf",
+        mime="application/pdf"
     )
 
 def show_no_nutrition_warning():

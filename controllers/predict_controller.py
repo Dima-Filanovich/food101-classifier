@@ -104,14 +104,14 @@ class PredictController:
         pdf.cell(200, 10, txt=f"Углеводы: {nutrition_info.get('carbohydrates')} г", ln=True)
         pdf.cell(200, 10, txt=f"Источник: {nutrition_info.get('url')}", ln=True)
 
-        # Сохранение PDF
-        temp_dir = tempfile.gettempdir()
-        report_path = os.path.join(temp_dir, "report.pdf")
-        pdf.output(report_path)
+        # Сохраняем PDF в память, а не в файл
+        buffer = io.BytesIO()
+        pdf.output(buffer)
+        buffer.seek(0)
 
-        return report_path
+        return buffer.read()
 
-        return report_path
+        
     def save_history(self, user_id: int, prediction: str, confidence: float, image_name: str = "uploaded_image.jpg"):
         """
         Сохраняет историю запроса пользователя в базу данных.
