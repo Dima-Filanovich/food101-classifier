@@ -106,16 +106,21 @@ def main():
                         image_name = item['image_name']
                         if isinstance(image_name, bytes):
                             image_name = image_name.decode("utf-8")
-                        
+
+                        predicted_class = item['predicted_class']
+                        confidence = item['confidence']
+                        timestamp = item['timestamp']
+
                         st.markdown(f"""
-                        **📷 Изображение:** {item['image_name']}  
-                        **🍽 Предсказание:** {item['predicted_class']}  
-                        **✅ Уверенность:** {item['confidence']:.2%}  
-                        **🕒 Дата:** {item['timestamp']}  
+                        **📷 Изображение:** {image_name}  
+                        **🍽 Предсказание:** {predicted_class}  
+                        **✅ Уверенность:** {confidence:.2%}  
+                        **🕒 Дата:** {timestamp}  
                         ---
                         """)
             else:
                 st.info("История пуста.")
+
 
 
 
