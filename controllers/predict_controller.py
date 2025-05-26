@@ -87,30 +87,27 @@ class PredictController:
         }
 
     def make_report(self, predicted_class, confidence, nutrition_info):
-        pdf = FPDF()
-        pdf.add_page()
+    pdf = FPDF()
+    pdf.add_page()
 
-        # Подключение TTF-шрифта с поддержкой Unicode
-        font_path = os.path.join(os.path.dirname(__file__), "fonts", "DejaVuSans.ttf")
-        pdf.add_font("DejaVu", "", font_path, uni=True)
-        pdf.set_font("DejaVu", size=12)
+    # Подключение TTF-шрифта с поддержкой Unicode
+    font_path = os.path.join(os.path.dirname(__file__), "fonts", "DejaVuSans.ttf")
+    pdf.add_font("DejaVu", "", font_path, uni=True)
+    pdf.set_font("DejaVu", size=12)
 
-        pdf.cell(200, 10, txt=f"Класс: {predicted_class}", ln=True)
-        pdf.cell(200, 10, txt=f"Уверенность: {confidence:.2f}", ln=True)
-        pdf.cell(200, 10, txt=f"Название продукта: {nutrition_info.get('product_name')}", ln=True)
-        pdf.cell(200, 10, txt=f"Перевод: {nutrition_info.get('product_name_ru')}", ln=True)
-        pdf.cell(200, 10, txt=f"Калории: {nutrition_info.get('energy_kcal')} ккал", ln=True)
-        pdf.cell(200, 10, txt=f"Белки: {nutrition_info.get('proteins')} г", ln=True)
-        pdf.cell(200, 10, txt=f"Жиры: {nutrition_info.get('fat')} г", ln=True)
-        pdf.cell(200, 10, txt=f"Углеводы: {nutrition_info.get('carbohydrates')} г", ln=True)
-        pdf.cell(200, 10, txt=f"Источник: {nutrition_info.get('url')}", ln=True)
+    pdf.cell(200, 10, txt=f"Класс: {predicted_class}", ln=True)
+    pdf.cell(200, 10, txt=f"Уверенность: {confidence:.2f}", ln=True)
+    pdf.cell(200, 10, txt=f"Название продукта: {nutrition_info.get('product_name')}", ln=True)
+    pdf.cell(200, 10, txt=f"Перевод: {nutrition_info.get('product_name_ru')}", ln=True)
+    pdf.cell(200, 10, txt=f"Калории: {nutrition_info.get('energy_kcal')} ккал", ln=True)
+    pdf.cell(200, 10, txt=f"Белки: {nutrition_info.get('proteins')} г", ln=True)
+    pdf.cell(200, 10, txt=f"Жиры: {nutrition_info.get('fat')} г", ln=True)
+    pdf.cell(200, 10, txt=f"Углеводы: {nutrition_info.get('carbohydrates')} г", ln=True)
+    pdf.cell(200, 10, txt=f"Источник: {nutrition_info.get('url')}", ln=True)
 
-        # Сохраняем PDF в память, а не в файл
-        buffer = io.BytesIO()
-        pdf.output(buffer)
-        buffer.seek(0)
-
-        return buffer.read()
+    # Сохраняем PDF в байтовый поток
+    pdf_data = pdf.output(dest="S").encode("latin-1")  # FPDF возвращает строку, надо закодировать
+    return io.BytesIO(pdf_data)
 
         
     def save_history(self, user_id: int, prediction: str, confidence: float, image_name: str = "uploaded_image.jpg"):
