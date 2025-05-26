@@ -5,6 +5,7 @@ from keras.layers import TFSMLayer
 from models.history_model import add_history
 import functools
 from fpdf import FPDF
+import tempfile
 
 class PredictController:
     def __init__(self):
@@ -82,7 +83,7 @@ class PredictController:
             "summary": summary,
             "is_confident": is_confident
         }
-        
+
     def make_report(self, predicted_class, confidence, nutrition_info, product_name_ru):
         pdf = FPDF()
         pdf.add_page()
