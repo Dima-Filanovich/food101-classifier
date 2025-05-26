@@ -104,6 +104,19 @@ def main():
                 image_name = item['image_name']
                 predicted_class = item['predicted_class']
                 confidence = item['confidence']
+                if isinstance(confidence, bytes):
+                    try:
+                        confidence = float(confidence.decode("utf-8"))
+                    except Exception as e:
+                        st.warning(f"⚠ Невозможно декодировать confidence: {confidence} ({e})")
+                        confidence = 0.0  # или пропустить item
+                elif not isinstance(confidence, float):
+                    try:
+                        confidence = float(confidence)
+                    except Exception as e:
+                        st.warning(f"⚠ Ошибка преобразования confidence: {confidence} ({e})")
+                        confidence = 0.0
+
                 timestamp = item['timestamp']
 
                 if isinstance(image_name, bytes):
