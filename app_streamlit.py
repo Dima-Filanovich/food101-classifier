@@ -97,7 +97,8 @@ def main():
             else:
                 show_no_nutrition_warning()
 
-            predict_ctrl.save_history(user["id"], top_classes[0], confidences[0])
+            predict_ctrl.save_history(user["id"], top_classes[0], confidences[0], uploaded_file.name)
+
 
 if __name__ == "__main__":
     init_db()

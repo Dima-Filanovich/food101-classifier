@@ -111,4 +111,17 @@ class PredictController:
         pdf.output(report_path)
 
         return report_path
+    def save_history(self, user_id: int, prediction: str, confidence: float, image_name: str = "uploaded_image.jpg"):
+        """
+        Сохраняет историю запроса пользователя в базу данных.
+
+        :param user_id: ID пользователя
+        :param prediction: Название предсказанного класса
+        :param confidence: Уверенность модели
+        :param image_name: Имя файла изображения (по умолчанию: uploaded_image.jpg)
+        """
+        try:
+            add_history(user_id, image_name, prediction, confidence)
+        except Exception as e:
+            print(f"Ошибка при сохранении истории: {e}")
 
