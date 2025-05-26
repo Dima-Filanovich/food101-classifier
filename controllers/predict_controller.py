@@ -85,31 +85,31 @@ class PredictController:
             "is_confident": is_confident
         }
 
-    def make_report(self, predicted_class, confidence, nutrition_info, product_name_ru):
+    def make_report(self, predicted_class, confidence, nutrition_info):
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", size=12)
 
-        pdf.cell(200, 10, txt="Отчет по классификации блюда", ln=True, align="C")
-        pdf.ln(10)
+        # Подключение TTF-шрифта с поддержкой Unicode
+        font_path = os.path.join(os.path.dirname(__file__), "fonts", "DejaVuSans.ttf")
+        pdf.add_font("DejaVu", "", font_path, uni=True)
+        pdf.set_font("DejaVu", size=12)
 
         pdf.cell(200, 10, txt=f"Класс: {predicted_class}", ln=True)
-        pdf.cell(200, 10, txt=f"Уверенность: {confidence:.2%}", ln=True)
-        pdf.cell(200, 10, txt=f"Название на русском: {product_name_ru}", ln=True)
-        pdf.ln(5)
+        pdf.cell(200, 10, txt=f"Уверенность: {confidence:.2f}", ln=True)
+        pdf.cell(200, 10, txt=f"Название продукта: {nutrition_info.get('product_name')}", ln=True)
+        pdf.cell(200, 10, txt=f"Перевод: {nutrition_info.get('product_name_ru')}", ln=True)
+        pdf.cell(200, 10, txt=f"Калории: {nutrition_info.get('energy_kcal')} ккал", ln=True)
+        pdf.cell(200, 10, txt=f"Белки: {nutrition_info.get('proteins')} г", ln=True)
+        pdf.cell(200, 10, txt=f"Жиры: {nutrition_info.get('fat')} г", ln=True)
+        pdf.cell(200, 10, txt=f"Углеводы: {nutrition_info.get('carbohydrates')} г", ln=True)
+        pdf.cell(200, 10, txt=f"Источник: {nutrition_info.get('url')}", ln=True)
 
-        if nutrition_info:
-            pdf.cell(200, 10, txt="Пищевая информация (на 100г):", ln=True)
-            pdf.cell(200, 10, txt=f"Энергия: {nutrition_info.get('energy_kcal', 'нет данных')} ккал", ln=True)
-            pdf.cell(200, 10, txt=f"Белки: {nutrition_info.get('proteins', 'нет данных')} г", ln=True)
-            pdf.cell(200, 10, txt=f"Жиры: {nutrition_info.get('fat', 'нет данных')} г", ln=True)
-            pdf.cell(200, 10, txt=f"Углеводы: {nutrition_info.get('carbohydrates', 'нет данных')} г", ln=True)
-            pdf.cell(200, 10, txt=f"Источник: {nutrition_info.get('url', 'неизвестно')}", ln=True)
-
-        # Временный файл
+        # Сохранение PDF
         temp_dir = tempfile.gettempdir()
         report_path = os.path.join(temp_dir, "report.pdf")
         pdf.output(report_path)
+
+        return report_path
 
         return report_path
     def save_history(self, user_id: int, prediction: str, confidence: float, image_name: str = "uploaded_image.jpg"):
