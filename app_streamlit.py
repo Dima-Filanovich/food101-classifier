@@ -19,31 +19,36 @@ def main():
     predict_ctrl = PredictController()
     nutrition_ctrl = NutritionController()
 
-    # Инициализация состояния
-    for key, default in {
-        "user": None,
-        "register_success": False,
-        "login_clicked": False,
-        "register_clicked": False,
-        "is_loading": False,
-        "login_username": "",
-        "login_password": "",
-        "register_data": ("", "", "")
-    }.items():
+    # Состояния сессии
+    for key in [
+        "user", "register_success", "login_clicked", "register_clicked", 
+        "is_loading", "login_username", "login_password", "register_data", 
+        "auth_mode"
+    ]:
         if key not in st.session_state:
-            st.session_state[key] = default
+            st.session_state[key] = None if key == "user" else False
+
+    st.session_state.auth_mode = st.session_state.auth_mode or "Вход"
 
     if st.session_state.user is None:
         st.title("Добро пожаловать в Food101 Classifier")
 
         if st.session_state.register_success:
-            st.success("✅ Регистрация прошла успешно! Пожалуйста, войдите.")
+            show_success("✅ Регистрация прошла успешно! Пожалуйста, войдите.")
             st.session_state.register_success = False
 
-        tab_login, tab_register = st.tabs(["Вход", "Регистрация"])
+        # Радио-переключатель с блокировкой при загрузке
+        st.session_state.auth_mode = st.radio(
+            "Выберите действие", ["Вход", "Регистрация"],
+            index=0 if st.session_state.auth_mode == "Вход" else 1,
+            horizontal=True,
+            disabled=st.session_state.is_loading
+        )
 
-        # Вход
-        with tab_login:
+        if st.session_state.is_loading:
+            st.info("⏳ Пожалуйста, подождите...")
+
+        if st.session_state.auth_mode == "Вход":
             username, password, login_clicked = show_login()
             if login_clicked and not st.session_state.is_loading:
                 st.session_state.login_clicked = True
@@ -52,7 +57,15 @@ def main():
                 st.session_state.is_loading = True
                 st.rerun()
 
-        if st.session_state.login_clicked and st.session_state.is_loading:
+        elif st.session_state.auth_mode == "Регистрация":
+            username, password, confirm_password, register_clicked = show_register()
+            if register_clicked and not st.session_state.is_loading:
+                st.session_state.register_clicked = True
+                st.session_state.register_data = (username, password, confirm_password)
+                st.session_state.is_loading = True
+                st.rerun()
+
+        if st.session_state.login_clicked:
             with st.spinner("⏳ Входим в систему..."):
                 try:
                     success, msg, user = auth_ctrl.login(
@@ -61,8 +74,8 @@ def main():
                     )
                     if success:
                         st.session_state.user = user
+                        show_success("✅ Успешный вход!")
                         st.session_state.login_clicked = False
-                        st.session_state.is_loading = False
                         st.rerun()
                     else:
                         show_error(msg)
@@ -70,18 +83,8 @@ def main():
                     show_error(f"❌ Ошибка при входе: {e}")
                 finally:
                     st.session_state.is_loading = False
-                    st.session_state.login_clicked = False
 
-        # Регистрация
-        with tab_register:
-            username, password, confirm_password, register_clicked = show_register()
-            if register_clicked and not st.session_state.is_loading:
-                st.session_state.register_clicked = True
-                st.session_state.register_data = (username, password, confirm_password)
-                st.session_state.is_loading = True
-                st.rerun()
-
-        if st.session_state.register_clicked and st.session_state.is_loading:
+        if st.session_state.register_clicked:
             with st.spinner("⏳ Регистрируем пользователя..."):
                 try:
                     username, password, confirm_password = st.session_state.register_data
@@ -89,7 +92,6 @@ def main():
                     if success:
                         st.session_state.register_success = True
                         st.session_state.register_clicked = False
-                        st.session_state.is_loading = False
                         st.rerun()
                     else:
                         show_error(msg)
@@ -97,7 +99,6 @@ def main():
                     show_error(f"❌ Ошибка при регистрации: {e}")
                 finally:
                     st.session_state.is_loading = False
-                    st.session_state.register_clicked = False
 
     else:
         user = st.session_state.user
@@ -132,7 +133,6 @@ def main():
 
             predict_ctrl.save_history(user["id"], top_classes[0], confidences[0], uploaded_file.name)
 
-            # История
             history = predict_ctrl.get_history(user["id"])
             for item in history:
                 image_name = item['image_name']
@@ -162,11 +162,11 @@ def main():
                 **🍽 Предсказание:** {predicted_class}  
                 **✅ Уверенность:** {confidence:.2%}  
                 **🕒 Дата:** {timestamp}  
-                ---
-                """)
+                ---""")
 
 if __name__ == "__main__":
     init_db()
     main()
+
 
 
