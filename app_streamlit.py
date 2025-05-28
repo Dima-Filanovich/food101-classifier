@@ -10,10 +10,10 @@ import pandas as pd
 import altair as alt
 import io
 
-# ВРЕМЕННОЕ ОТКЛЮЧЕНИЕ ПРИЛОЖЕНИЯ
+# ВРЕМЕННОЕ ОТКЛЮЧЕНИЕ
 MAINTENANCE_MODE = False
 if MAINTENANCE_MODE:
-    st.error("🚧 Приложение находится на обслуживании. Возвращайтесь позже.")
+    st.error("🚧 Приложение находится на обслуживании.")
     st.stop()
 
 # Загрузка модели
@@ -23,7 +23,6 @@ def load_model():
 
 model = load_model()
 
-# Список классов
 CLASS_NAMES = [
     'apple_pie', 'baby_back_ribs', 'baklava', 'beef_carpaccio', 'beef_tartare',
     'beet_salad', 'beignets', 'bibimbap', 'bread_pudding', 'breakfast_burrito',
@@ -48,77 +47,75 @@ CLASS_NAMES = [
     'waffles'
 ]
 
-
-
-
-# Предобработка изображения
 def preprocess_image(image: Image.Image) -> np.ndarray:
     image = image.resize((224, 224))
     img_array = tf.keras.preprocessing.image.img_to_array(image)
     img_array = tf.keras.applications.efficientnet.preprocess_input(img_array)
     return np.expand_dims(img_array, axis=0)
 
-# Получение информации о пище
+# Улучшенный поиск информации о пище
 def get_nutrition_info(food_name):
-    query = urllib.parse.quote(food_name.lower())
-    url = f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={query}&search_simple=1&action=process&json=1&page_size=1"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        if data.get("products"):
-            product = data["products"][0]
-            nutriments = product.get("nutriments", {})
-            return {
-                "product_name": product.get("product_name", ""),
-                "product_name_ru": product.get("product_name_ru", ""),
-                "energy_kcal": nutriments.get("energy-kcal_100g"),
-                "proteins": nutriments.get("proteins_100g"),
-                "fat": nutriments.get("fat_100g"),
-                "carbohydrates": nutriments.get("carbohydrates_100g"),
-                "url": product.get("url", "")
-            }
-    return None
+    def try_query(query):
+        url = f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={urllib.parse.quote(query)}&search_simple=1&action=process&json=1&page_size=5"
+        try:
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                for product in data.get("products", []):
+                    nutriments = product.get("nutriments", {})
+                    if nutriments.get("energy-kcal_100g"):
+                        return {
+                            "product_name": product.get("product_name", ""),
+                            "product_name_ru": product.get("product_name_ru", ""),
+                            "energy_kcal": nutriments.get("energy-kcal_100g"),
+                            "proteins": nutriments.get("proteins_100g"),
+                            "fat": nutriments.get("fat_100g"),
+                            "carbohydrates": nutriments.get("carbohydrates_100g"),
+                            "url": product.get("url", "")
+                        }
+        except Exception:
+            return None
+        return None
 
-# Интерфейс
+    base_query = food_name.replace("_", " ").lower()
+    result = try_query(base_query)
+    if not result and " " in base_query:
+        result = try_query(base_query.split(" ")[0])
+    return result
 
+@st.cache_data(show_spinner=False)
+def get_nutrition_info_cached(food_name):
+    return get_nutrition_info(food_name)
+
+# --- Интерфейс ---
 st.title("🍽️ Классификатор еды — Food101")
-st.write("Загрузите изображение блюда, и модель определит его категорию. Точность модели 73%")
-with st.expander("📖 Посмотреть все категории, которые распознаёт модель"):
+st.write("Загрузите изображение блюда, и модель определит его категорию. Точность ~73%")
+with st.expander("📖 Посмотреть все категории"):
     st.markdown(", ".join(f"`{c.replace('_', ' ').title()}`" for c in CLASS_NAMES))
 
+uploaded_file = st.file_uploader("📤 Загрузите изображение...", type=["jpg", "jpeg", "png"])
 
-uploaded_file = st.file_uploader("📤 Выберите изображение...", type=["jpg", "jpeg", "png"])
-
-# Пример, если нет файла
 if uploaded_file is None:
     st.info("Вы можете загрузить изображение. Вот пример:")
     example_url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsfW388zWeoTBoYVtL5yJi85sJmFoVB3isLw&s"
     example_img = Image.open(requests.get(example_url, stream=True).raw).convert("RGB")
     st.image(example_img, caption="Пример: Хот-дог", use_container_width=True)
 
-    # Скачивание изображения
     img_byte_arr = io.BytesIO()
     example_img.save(img_byte_arr, format='JPEG')
-    st.download_button(
-        label="📥 Скачать пример изображения",
-        data=img_byte_arr.getvalue(),
-        file_name="example_hotdog.jpg",
-        mime="image/jpeg"
-    )
+    st.download_button("📥 Скачать пример", data=img_byte_arr.getvalue(), file_name="example.jpg", mime="image/jpeg")
 
-# Обработка изображения
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Загруженное изображение", use_container_width=True)
 
-    st.write("🔍 Результат распознавания:")
+    st.write("🔍 Анализ изображения...")
     img_batch = preprocess_image(image)
     img_tensor = tf.convert_to_tensor(img_batch)
-    with st.spinner("🔍 Анализ изображения..."):
-    	output_dict = model(img_tensor)
-    	predictions = list(output_dict.values())[0].numpy()[0]
+    with st.spinner("🔍 Распознавание..."):
+        output_dict = model(img_tensor)
+        predictions = list(output_dict.values())[0].numpy()[0]
 
-    # Топ-3
     top_indices = predictions.argsort()[-3:][::-1]
     top_classes = [CLASS_NAMES[i].replace('_', ' ').title() for i in top_indices]
     confidences = [predictions[i] for i in top_indices]
@@ -127,7 +124,6 @@ if uploaded_file is not None:
     for name, conf in zip(top_classes, confidences):
         st.write(f"{name}: {conf:.2%}")
 
-    # График
     df = pd.DataFrame({"Блюдо": top_classes, "Уверенность": confidences})
     chart = alt.Chart(df).mark_bar().encode(
         x=alt.X("Уверенность:Q", axis=alt.Axis(format=".0%")),
@@ -136,21 +132,20 @@ if uploaded_file is not None:
     ).properties(height=150)
     st.altair_chart(chart, use_container_width=True)
 
-    # Основной результат
     predicted_class = top_classes[0]
     if confidences[0] < 0.5:
-    	st.warning(f"⚠️ Модель не уверена в распознавании (уверенность: {confidences[0]:.2%}). Возможно, 	изображение не соответствует ни одной из категорий точно. Предположение: **{predicted_class}**")
+        st.warning(f"⚠️ Низкая уверенность ({confidences[0]:.2%}). Возможное блюдо: **{predicted_class}**")
     else:
-        st.success(f"🍽️ Это скорее всего: **{predicted_class}** ({confidences[0]:.2%} уверенности)")
+        st.success(f"🍽️ Предсказание: **{predicted_class}** ({confidences[0]:.2%} уверенности)")
 
+    # Получение информации
+    if "retry_clicked" not in st.session_state:
+        st.session_state.retry_clicked = False
 
-    # КЭШИРОВАННАЯ загрузка пищевой ценности
-    @st.cache_data(show_spinner=False)
-    def get_nutrition_info_cached(food_name):
-        return get_nutrition_info(food_name)
-
-    # Пищевая информация с ожиданием
-    with st.spinner("⏳ Получение информации о пищевой ценности..."):
+    if st.session_state.retry_clicked:
+        nutrition_info = get_nutrition_info(predicted_class)
+        st.session_state.retry_clicked = False
+    else:
         nutrition_info = get_nutrition_info_cached(predicted_class)
 
     if nutrition_info:
@@ -171,7 +166,6 @@ if uploaded_file is not None:
         if nutrition_info.get("url"):
             st.markdown(f"[📎 Подробнее на Open Food Facts]({nutrition_info['url']})")
 
-        # Скачать отчёт
         report = f"""
 Предсказанное блюдо: {predicted_class}
 Уверенность: {confidences[0]:.2%}
@@ -182,14 +176,13 @@ if uploaded_file is not None:
 Углеводы: {nutrition_info['carbohydrates']} г
 Название на русском: {product_name_ru}
 """
-        st.download_button(
-            label="📥 Скачать отчёт",
-            data=report,
-            file_name="food_prediction_report.txt",
-            mime="text/plain"
-        )
+        st.download_button("📥 Скачать отчёт", data=report, file_name="food_prediction_report.txt", mime="text/plain")
     else:
         st.warning("⚠️ Информация о пищевой ценности не найдена.")
+        if st.button("🔄 Повторить попытку"):
+            st.session_state.retry_clicked = True
+            st.experimental_rerun()
+
 
 
 
