@@ -138,35 +138,65 @@ if uploaded_file is not None:
     else:
         st.success(f"🍽️ Предсказание: **{predicted_class}** ({confidences[0]:.2%} уверенности)")
 
-    # Получение информации
-    if "retry_clicked" not in st.session_state:
-        st.session_state.retry_clicked = False
+    # ИНИЦИАЛИЗАЦИЯ СЕССИИ
+if "retry_clicked" not in st.session_state:
+    st.session_state.retry_clicked = False
 
-    if st.session_state.retry_clicked:
-        nutrition_info = get_nutrition_info(predicted_class)
-        st.session_state.retry_clicked = False
-    else:
-        nutrition_info = get_nutrition_info_cached(predicted_class)
+# Функция получения пищевой информации (улучшенная)
+def get_nutrition_info(food_name):
+    query = urllib.parse.quote(food_name.lower())
+    url = f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={query}&search_simple=1&action=process&json=1&page_size=5"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("products"):
+            for product in data["products"]:
+                nutriments = product.get("nutriments", {})
+                if "energy-kcal_100g" in nutriments:
+                    return {
+                        "product_name": product.get("product_name", ""),
+                        "product_name_ru": product.get("product_name_ru", ""),
+                        "energy_kcal": nutriments.get("energy-kcal_100g"),
+                        "proteins": nutriments.get("proteins_100g"),
+                        "fat": nutriments.get("fat_100g"),
+                        "carbohydrates": nutriments.get("carbohydrates_100g"),
+                        "url": product.get("url", "")
+                    }
+    return None
 
-    if nutrition_info:
-        st.subheader("🧪 Пищевая ценность (на 100г):")
-        st.write(f"**Калории:** {nutrition_info['energy_kcal']} ккал")
-        st.write(f"**Белки:** {nutrition_info['proteins']} г")
-        st.write(f"**Жиры:** {nutrition_info['fat']} г")
-        st.write(f"**Углеводы:** {nutrition_info['carbohydrates']} г")
+# КЭШ
+@st.cache_data(show_spinner=False)
+def get_nutrition_info_cached(food_name):
+    return get_nutrition_info(food_name)
 
-        product_name_ru = nutrition_info.get("product_name_ru")
-        if not product_name_ru:
-            try:
-                product_name_ru = GoogleTranslator(source='en', target='ru').translate(predicted_class)
-            except Exception:
-                product_name_ru = "Перевод недоступен"
-        st.write(f"**Название на русском:** {product_name_ru}")
+# Получение инфо и вывод
+with st.spinner("⏳ Получение информации о пищевой ценности..."):
+    nutrition_info = get_nutrition_info_cached(predicted_class)
 
-        if nutrition_info.get("url"):
-            st.markdown(f"[📎 Подробнее на Open Food Facts]({nutrition_info['url']})")
+if not nutrition_info and " " in predicted_class:
+    # Попытка по первой части (например, "Chicken" из "Chicken Wings")
+    nutrition_info = get_nutrition_info_cached(predicted_class.split(" ")[0])
 
-        report = f"""
+if nutrition_info:
+    st.subheader("🧪 Пищевая ценность (на 100г):")
+    st.write(f"**Калории:** {nutrition_info['energy_kcal']} ккал")
+    st.write(f"**Белки:** {nutrition_info['proteins']} г")
+    st.write(f"**Жиры:** {nutrition_info['fat']} г")
+    st.write(f"**Углеводы:** {nutrition_info['carbohydrates']} г")
+
+    product_name_ru = nutrition_info.get("product_name_ru")
+    if not product_name_ru:
+        try:
+            product_name_ru = GoogleTranslator(source='en', target='ru').translate(predicted_class)
+        except Exception:
+            product_name_ru = "Перевод недоступен"
+    st.write(f"**Название на русском:** {product_name_ru}")
+
+    if nutrition_info.get("url"):
+        st.markdown(f"[📎 Подробнее на Open Food Facts]({nutrition_info['url']})")
+
+    # Скачать отчёт
+    report = f"""
 Предсказанное блюдо: {predicted_class}
 Уверенность: {confidences[0]:.2%}
 
@@ -176,12 +206,18 @@ if uploaded_file is not None:
 Углеводы: {nutrition_info['carbohydrates']} г
 Название на русском: {product_name_ru}
 """
-        st.download_button("📥 Скачать отчёт", data=report, file_name="food_prediction_report.txt", mime="text/plain")
-    else:
-        st.warning("⚠️ Информация о пищевой ценности не найдена.")
-        if st.button("🔄 Повторить попытку"):
-            st.session_state.retry_clicked = True
-            st.experimental_rerun()
+    st.download_button(
+        label="📥 Скачать отчёт",
+        data=report,
+        file_name="food_prediction_report.txt",
+        mime="text/plain"
+    )
+else:
+    st.warning("⚠️ Информация о пищевой ценности не найдена.")
+    if st.button("🔄 Повторить попытку"):
+        st.session_state.retry_clicked = True
+        st.experimental_set_query_params(dummy=str(np.random.rand()))  # триггер перезапуска
+
 
 
 
