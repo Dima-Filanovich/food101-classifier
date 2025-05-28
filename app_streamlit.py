@@ -170,8 +170,12 @@ def get_nutrition_info_cached(food_name):
     return get_nutrition_info(food_name)
 
 # Получение инфо и вывод
-with st.spinner("⏳ Получение информации о пищевой ценности..."):
-    nutrition_info = get_nutrition_info_cached(predicted_class)
+# Кнопка повторного запроса
+if st.button("🔄 Повторить попытку"):
+    nutrition_info = get_nutrition_info(predicted_class)
+else:
+    with st.spinner("⏳ Получение информации о пищевой ценности..."):
+        nutrition_info = get_nutrition_info_cached(predicted_class)
 
 if not nutrition_info and " " in predicted_class:
     # Попытка по первой части (например, "Chicken" из "Chicken Wings")
@@ -214,9 +218,7 @@ if nutrition_info:
     )
 else:
     st.warning("⚠️ Информация о пищевой ценности не найдена.")
-    if st.button("🔄 Повторить попытку"):
-        st.session_state.retry_clicked = True
-        st.experimental_set_query_params(dummy=str(np.random.rand()))  # триггер перезапуска
+   
 
 
 
