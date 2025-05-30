@@ -23,19 +23,7 @@ def load_model():
 
 model = load_model()
 
-@st.cache_data
-def get_translated_classes():
-    translations = {}
-    for cls in CLASS_NAMES:
-        readable_name = cls.replace("_", " ").title()
-        try:
-            ru_name = GoogleTranslator(source='en', target='ru').translate(readable_name)
-        except Exception:
-            ru_name = readable_name
-        translations[cls] = ru_name
-    return translations
 
-CLASS_TRANSLATIONS = get_translated_classes()
 
 
 
@@ -62,6 +50,20 @@ CLASS_NAMES = [
     'sushi', 'tacos', 'takoyaki', 'tiramisu', 'tuna_tartare',
     'waffles'
 ]
+
+@st.cache_data
+def get_translated_classes():
+    translations = {}
+    for cls in CLASS_NAMES:
+        readable_name = cls.replace("_", " ").title()
+        try:
+            ru_name = GoogleTranslator(source='en', target='ru').translate(readable_name)
+        except Exception:
+            ru_name = readable_name
+        translations[cls] = ru_name
+    return translations
+
+CLASS_TRANSLATIONS = get_translated_classes()
 
 def preprocess_image(image: Image.Image) -> np.ndarray:
     image = image.resize((224, 224))
