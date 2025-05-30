@@ -23,6 +23,22 @@ def load_model():
 
 model = load_model()
 
+@st.cache_data
+def get_translated_classes():
+    translations = {}
+    for cls in CLASS_NAMES:
+        readable_name = cls.replace("_", " ").title()
+        try:
+            ru_name = GoogleTranslator(source='en', target='ru').translate(readable_name)
+        except Exception:
+            ru_name = readable_name
+        translations[cls] = ru_name
+    return translations
+
+CLASS_TRANSLATIONS = get_translated_classes()
+
+
+
 CLASS_NAMES = [
     'apple_pie', 'baby_back_ribs', 'baklava', 'beef_carpaccio', 'beef_tartare',
     'beet_salad', 'beignets', 'bibimbap', 'bread_pudding', 'breakfast_burrito',
@@ -91,7 +107,16 @@ def get_nutrition_info_cached(food_name):
 st.title("🍽️ Классификатор еды — Food101")
 st.write("Загрузите изображение блюда, и модель определит его категорию. Точность ~73%")
 with st.expander("📖 Посмотреть все категории"):
-    st.markdown(", ".join(f"`{c.replace('_', ' ').title()}`" for c in CLASS_NAMES))
+    st.markdown("**Категории на английском и русском:**")
+    cols = st.columns(2)
+    half = len(CLASS_NAMES) // 2
+    with cols[0]:
+        for cls in CLASS_NAMES[:half]:
+            st.markdown(f"`{cls.replace('_', ' ').title()}` → **{CLASS_TRANSLATIONS[cls]}**")
+    with cols[1]:
+        for cls in CLASS_NAMES[half:]:
+            st.markdown(f"`{cls.replace('_', ' ').title()}` → **{CLASS_TRANSLATIONS[cls]}**")
+
 
 uploaded_file = st.file_uploader("📤 Загрузите изображение...", type=["jpg", "jpeg", "png"])
 
@@ -183,6 +208,27 @@ if uploaded_file is not None:
         st.write(f"**Белки:** {nutrition_info['proteins']} г")
         st.write(f"**Жиры:** {nutrition_info['fat']} г")
         st.write(f"**Углеводы:** {nutrition_info['carbohydrates']} г")
+
+                # Визуализация БЖУ
+        try:
+            st.subheader("📊 Состав БЖУ (на 100г):")
+            bju_data = pd.DataFrame({
+                "Компонент": ["Белки", "Жиры", "Углеводы"],
+                "Количество": [
+                    float(nutrition_info['proteins'] or 0),
+                    float(nutrition_info['fat'] or 0),
+                    float(nutrition_info['carbohydrates'] or 0)
+                ]
+            })
+            pie_chart = alt.Chart(bju_data).mark_arc(innerRadius=50).encode(
+                theta="Количество:Q",
+                color="Компонент:N",
+                tooltip=["Компонент", "Количество"]
+            ).properties(width=300, height=300)
+            st.altair_chart(pie_chart, use_container_width=False)
+        except Exception as e:
+            st.info("⚠️ Не удалось построить график БЖУ.")
+
 
         product_name_ru = nutrition_info.get("product_name_ru")
         if not product_name_ru:
